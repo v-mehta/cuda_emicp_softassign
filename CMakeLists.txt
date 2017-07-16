@@ -47,17 +47,7 @@ find_library(ATLAS atlas)
 include(FindLAPACK)
 add_definitions ( ${LAPACK_LINKER_FLAGS} )
 
-#cuda_add_executable ( ${PROJECT_NAME} src/3dregistration.h src/main.cpp src/findRTfromS.cpp src/cloud2data.cpp src/icp.cpp src/emicp_cpu.cpp src/softassign.cu src/emicp.cu)
 cuda_add_executable ( ${PROJECT_NAME} src/3dregistration.h src/main.cpp src/findRTfromS.cpp src/cloud2data.cpp src/emicp.cu)
 target_link_libraries ( ${PROJECT_NAME} ${PCL_LIBRARIES} ${LAPACK_LIBRARIES} -llapack)
 
 CUDA_ADD_CUBLAS_TO_TARGET ( ${PROJECT_NAME} )
-
-#add_executable (add_rigid_transform src/add_rigid_transform.cpp)
-#target_link_libraries (add_rigid_transform ${PCL_LIBRARIES})
-
-#add_executable (pcd2ply src/pcd2ply.cpp)
-#target_link_libraries (pcd2ply ${PCL_LIBRARIES})
-
-#add_executable (merge src/merge.cpp)
-#target_link_libraries (merge ${PCL_LIBRARIES})
