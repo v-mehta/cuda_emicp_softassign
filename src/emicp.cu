@@ -1,40 +1,37 @@
 /*
-   Copyright (c) 2010 Toru Tamaki
+  Copyright (c) 2010 Toru Tamaki
 
-   Permission is hereby granted, free of charge, to any person
-   obtaining a copy of this software and associated documentation
-   files (the "Software"), to deal in the Software without
-   restriction, including without limitation the rights to use,
-   copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the
-   Software is furnished to do so, subject to the following
-   conditions:
+  Permission is hereby granted, free of charge, to any person
+  obtaining a copy of this software and associated documentation
+  files (the "Software"), to deal in the Software without
+  restriction, including without limitation the rights to use,
+  copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following
+  conditions:
 
-   The above copyright notice and this permission notice shall be
-   included in all copies or substantial portions of the Software.
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
 
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-   OTHER DEALINGS IN THE SOFTWARE.
- */
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  OTHER DEALINGS IN THE SOFTWARE.
+*/
 
- #include <iostream>
- #include <algorithm>
- #include <cstdio>
+#include <iostream>
+#include <algorithm>
+#include <cstdio>
 
- #include <cublas.h>
- #include <helper_cuda.h>
- #include <helper_timer.h>
+#include <cublas.h>
+#include <helper_cuda.h>
+#include <helper_timer.h>
 
-// uncomment if you do not use the viewer.
- #define NOVIEWER
-
- #include "3dregistration.h"
+#include "3dregistration.h"
 
 using namespace std;
 
@@ -45,7 +42,6 @@ updateA(int rowsA, int colsA, int pitchA,
 	const float* d_R, const float* d_t,
 	float* d_A,
 	float sigma_p2) {
-
 
 	int r =  blockIdx.x * blockDim.x + threadIdx.x;
 	int c =  blockIdx.y * blockDim.y + threadIdx.y;
@@ -176,7 +172,7 @@ centeringXandY(int rowsA,
 	const float* d_Yx, const float* d_Yy, const float* d_Yz,
 	float* d_XxCenterd, float* d_XyCenterd, float* d_XzCenterd,
 	float* d_YxCenterd, float* d_YyCenterd, float* d_YzCenterd
-){
+) {
 
 	// do for both X and Y at the same time
 
@@ -224,7 +220,6 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	float sigma_inf    = param.sigma_inf;
 	float sigma_factor = param.sigma_factor;
 	float d_02         = param.d_02;
-
 
 	// Initialize CUDA device.
 	findCudaDevice(param.argc, (const char**)param.argv);
@@ -282,26 +277,24 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	// NOTE on matrix A
 	// number of rows:     Ysize, or rowsA
 	// number of columns : Xsize, or colsA
-	// 
+	//
 	//                    [0th in X] [1st]  ... [(Xsize-1)] 
 	// [0th point in Y] [ A(0,0)     A(0,1) ... A(0,Xsize-1)      ] 
 	// [1st           ] [ A(1,0)     A(1,1) ...                   ]
 	// ...              [ ...                                     ]
 	// [(Ysize-1)     ] [ A(Ysize-1, 0)     ... A(Ysize-1,Xsize-1)]
 	//
-	// 
+	//
 	// CAUTION on matrix A
 	// A is allcoated as a column-maijor format for the use of cublas.
 	// This means that you must acces an element at row r and column c as:
 	// A(r,c) = A[c * pitchA + r]
-
 	int rowsA = Ysize;
 	int colsA = Xsize;
 
 	// pitchA: leading dimension of A, which is ideally equal to rowsA,
 	//          but actually larger than that.
 	int pitchA = (rowsA / 4 + 1) * 4;
-
 	memCUDA(A, pitchA*colsA);
 
 	// a vector with all elements of 1.0f
@@ -317,8 +310,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 	// for 2D block
 	dim3 dimBlockForA(BLOCK_SIZE, BLOCK_SIZE); // a block is (BLOCK_SIZE*BLOCK_SIZE) threads
-	dim3 dimGridForA( (pitchA + dimBlockForA.x - 1) / dimBlockForA.x,
-		(colsA  + dimBlockForA.y - 1) / dimBlockForA.y);
+	dim3 dimGridForA( (pitchA + dimBlockForA.x - 1) / dimBlockForA.x, (colsA  + dimBlockForA.y - 1) / dimBlockForA.y);
 
 	// for 1D block
 	int threadsPerBlockForYsize = 512; // a block is 512 threads
@@ -336,7 +328,6 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		CUDA_SAFE_CALL( cudaThreadSynchronize() );\
 		CUT_SAFE_CALL(sdkStopTimer(&timer)); \
 	}
-
 
 	// Timers
 	StopWatchInterface *timerTotal, *timerUpdateA, *timerAfterSVD, *timerRT;
@@ -360,16 +351,14 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		fprintf(stderr, "%d iter. sigma_p2 %f  ", Titer++, sigma_p2);
 		fprintf(stderr, "time %.10f [s]\n", sdkGetTimerValue(&timerTotal) / 1000.0f);
 
-		// UpdateA
+		// Call kernel to update A.
 		START_TIMER(timerUpdateA);
-
 		updateA <<< dimGridForA, dimBlockForA >>>
 			(rowsA, colsA, pitchA,
-				d_Xx, d_Xy, d_Xz, 
+				d_Xx, d_Xy, d_Xz,
 				d_Yx, d_Yy, d_Yz,
-				d_R, d_t, 
+				d_R, d_t,
 				d_A, sigma_p2);
-
 		STOP_TIMER(timerUpdateA);
 
 		// Normalization of A
@@ -414,14 +403,11 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 			0.0f,         // float beta
 			d_lambda, 1); // float *y, int incy
 
-
 		// float cublasSasum (int n, const float *x, int incx) 
 		float sumLambda = cublasSasum (rowsA, d_lambda, 1);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
-
 		// compute X'
-
 		// cublasSgemm (char transa, char transb, int m, int n, int k, float alpha, 
 		//              const float *A, int lda, const float *B, int ldb, float beta, 
 		//              float *C, int ldc)
@@ -430,7 +416,6 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		// m      number of rows of matrix op(A) and rows of matrix C
 		// n      number of columns of matrix op(B) and number of columns of C
 		// k      number of columns of matrix op(A) and number of rows of op(B) 
-
 		// A * X => X'
 		//     d_A      *    d_X    =>  d_Xprime
 		//(rowsA*colsA) *  (colsA*3)  =  (rowsA*3)
@@ -440,23 +425,12 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 			d_X, colsA,
 			0.0f, d_Xprime, rowsA);
 
-
 		// X' ./ lambda => X'
-		elementwiseDivision
-			<<< blocksPerGridForYsize, threadsPerBlockForYsize>>>
-			(rowsA, d_XprimeX, d_XprimeY, d_XprimeZ, d_lambda);
-
+		elementwiseDivision <<< blocksPerGridForYsize, threadsPerBlockForYsize>>> (rowsA, d_XprimeX, d_XprimeY, d_XprimeZ, d_lambda);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
-
-		//
 		// centering X' and Y
-		//
-
-		///////////////////////////////////////////////////////////////////////////////////// 
-
 		// find weighted center of X' and Y
-
 		// d_Xprime^T *    d_lambda     =>   h_Xc
 		//  (3 * rowsA)   (rowsA * 1)  =  (3 * 1)
 		cublasSgemv('t',          // char trans
@@ -491,8 +465,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 		// d_Xprime .- d_Xc => d_XprimeCenterd
 		// d_Y      .- d_Yc => d_YCenterd
-		centeringXandY
-			<<< blocksPerGridForYsize, threadsPerBlockForYsize>>>
+		centeringXandY <<< blocksPerGridForYsize, threadsPerBlockForYsize>>>
 			(rowsA, 
 				d_Xc, d_Yc,
 				d_XprimeX, d_XprimeY, d_XprimeZ,
@@ -505,7 +478,6 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 		///////////////////////////////////////////////////////////////////////////////////// 
 		// compute S
-
 		//  d_XprimeCented^T *   d_YCenterd     =>  d_S
 		//    (3*rowsA)  *  (rowsA*3)  =  (3*3)
 		//   m  * k           k * n        m * n
@@ -516,28 +488,17 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		CUDA_SAFE_CALL(cudaMemcpy(h_S, d_S, sizeof(float)*9, cudaMemcpyDeviceToHost));
 
 		///////////////////////////////////////////////////////////////////////////////////// 
-
 		// find RT from S
 		START_TIMER(timerAfterSVD);
 		findRTfromS(h_Xc, h_Yc, h_S, h_R, h_t);
 		STOP_TIMER(timerAfterSVD);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
-
 		// copy R,t to device
 		START_TIMER(timerRT);
 		CUDA_SAFE_CALL(cudaMemcpy(d_R, h_R, sizeof(float)*3*3, cudaMemcpyHostToDevice));
 		CUDA_SAFE_CALL(cudaMemcpy(d_t, h_t, sizeof(float)*3,   cudaMemcpyHostToDevice));
 		STOP_TIMER(timerRT);
-
-		///////////////////////////////////////////////////////////////////////////////////// 
-
-		Eigen::Matrix4f transformation;
-		transformation <<
-			h_R[0], h_R[1], h_R[2], h_t[0],
-			h_R[3], h_R[4], h_R[5], h_t[1],
-			h_R[6], h_R[7], h_R[8], h_t[2],
-			0, 0, 0, 1;
 
 		sigma_p2 *= sigma_factor;
 	}
@@ -560,7 +521,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	}
 
 	// Shutdown CUBLAS API.
-	//cublasShutdown();
+	cublasShutdown();
 
 	// Do CUDA memory cleaning.
 	CUDA_SAFE_CALL(cudaFree(d_X));

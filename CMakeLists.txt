@@ -5,7 +5,6 @@ project(cuda_emicp_softassign)
 
 # Force gcc and g++ to use version 5.4 because nvcc cannot handle any versions higher than 5.4.
 set(CMAKE_C_COMPILER "/usr/bin/gcc-5")
-#set(CMAKE_CXX_COMPILER "/usr/bin/g++-5")
 
 SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
 SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) 

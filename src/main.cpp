@@ -40,10 +40,7 @@
 
 using namespace std;
 
-
 void loadFile(const char* fileName, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
-	pcl::PolygonMesh mesh;
-
 	if (pcl::io::loadPCDFile(fileName, *cloud) == -1) {
 		std::cerr << "Failed to read PCD file: " << fileName << std::endl;
 		return;
@@ -58,6 +55,7 @@ template <class T>
 class isDelete {
 private:
 	float _random_sampling_percentage;
+
 public:
 	isDelete(float random_sampling_percentage) {
 		srand((long)time(NULL));
@@ -76,7 +74,6 @@ void pointsReduction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float random_sam
 	isDelete<pcl::PointXYZ> randDel(random_sampling_percentage);
 	cloud->points.erase(std::remove_if(cloud->points.begin(), cloud->points.end(), randDel), cloud->points.end());
 }
-
 
 /// Scale the point cloud.
 void alignScaleOnce1(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
@@ -98,9 +95,7 @@ void alignScaleOnce1(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud
 	pcl::transformPointCloud (*cloud2, *cloud2, scale);
 }
 
-void alignScaleOnce(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2)
-{
+void alignScaleOnce(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
 	Eigen::Vector4f center1, center2;
 	Eigen::Matrix3f covariance1, covariance2;
 	pcl::computeMeanAndCovarianceMatrix (*cloud1, covariance1, center1);
@@ -108,7 +103,6 @@ void alignScaleOnce(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
 
 	std::cout << "scale1 = " << covariance1.trace() << std::endl;
 	std::cout << "scale2 = " << covariance2.trace() << std::endl;
-
 
 	Eigen::Affine3f Scale;
 	float s;
@@ -128,8 +122,8 @@ void alignScaleOnce(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
 	0, s, 0, 0,
 	0, 0, s, 0,
 	0, 0, 0, 1;
-	pcl::transformPointCloud ( *cloud2, *cloud2, Scale );
 
+	pcl::transformPointCloud ( *cloud2, *cloud2, Scale );
 	pcl::computeMeanAndCovarianceMatrix (*cloud1, covariance1, center1);
 	pcl::computeMeanAndCovarianceMatrix (*cloud2, covariance2, center2);
 
@@ -137,9 +131,8 @@ void alignScaleOnce(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1,
 	std::cout << "scale2 = " << covariance2.trace() << std::endl;
 }
 
-void init_RT(float *h_R, float *h_t){
-
-	// set to Identity matrix
+void init_RT(float *h_R, float *h_t) {
+	// Set initial rotation to identity.
 	h_R[0] = 1.0f;
 	h_R[1] = 0.0f;
 	h_R[2] = 0.0f;
@@ -150,6 +143,7 @@ void init_RT(float *h_R, float *h_t){
 	h_R[7] = 0.0f;
 	h_R[8] = 1.0f;
 
+	// Set initial translation to zeros.
 	h_t[0] = 0.0f;
 	h_t[1] = 0.0f;
 	h_t[2] = 0.0f;
@@ -165,11 +159,9 @@ void printRT(const float* R, const float* t){
 	for(int r=0; r<3; r++)
 		printf("%f ", t[r]);
 	printf("\n");
-
 }
 
 void saveRTtoFile(const float* R, const float* t, const char* filename){
-
 	FILE *fp;
 	if((fp = fopen(filename, "w")) != NULL){
 		for(int r=0; r<9; r++){
@@ -183,32 +175,27 @@ void saveRTtoFile(const float* R, const float* t, const char* filename){
 	fclose(fp);
 }
 
-void loadRTfromFile(float* R, float* t, const char* filename){
-
+void loadRTfromFile(float* R, float* t, const char* filename) {
 	FILE *fp;
-	if((fp = fopen(filename, "r")) != NULL){
-		if(12 != fscanf(fp,"%f%f%f%f%f%f%f%f%f%f%f%f",
+	if ((fp = fopen(filename, "r")) != NULL) {
+		if (12 != fscanf(fp,"%f%f%f%f%f%f%f%f%f%f%f%f",
 				&R[0], &R[1], &R[2],
 				&R[3], &R[4], &R[5],
 				&R[6], &R[7], &R[8],
 				&t[0], &t[1], &t[2]
-		)){
+		)) {
 			fprintf(stderr, "Fail to read RT from file [%s]\n", filename);
 			exit(1);
 		}
-
 	}
-
 }
 
-
-
-int main(int argc, char** argv){
+int main(int argc, char** argv) {
 	char *pointFileX, *pointFileY;
 	int wrongArg = 0;
 
 	// Read filenames of point clouds X and Y.
-	// File format is txt or ply. see readPointsFromFile() or readPointsFromPLYFile().
+	// File format must be pcd.
 	if (getCmdLineArgumentString(argc, (const char **) argv, "pointFileX", &pointFileX) &&
 		getCmdLineArgumentString(argc, (const char **) argv, "pointFileY", &pointFileY)){
 		cout << "option: pointFileX= " << pointFileX << endl;
@@ -228,7 +215,7 @@ int main(int argc, char** argv){
 	if (! (param.sigma_p2     = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_p2") ) )     param.sigma_p2 = 0.01f;
 	if (! (param.sigma_inf    = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_inf") ) )    param.sigma_inf = 0.00001f;
 	if (! (param.sigma_factor = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_factor") ) ) param.sigma_factor = 0.9f;
-	if (! (param.d_02         = getCmdLineArgumentFloat(argc, (const char **) argv, "d_02") ) )	       param.d_02 = 0.01f;
+	if (! (param.d_02         = getCmdLineArgumentFloat(argc, (const char **) argv, "d_02") ) )	        param.d_02 = 0.01f;
 
 	cout << "EM-ICP paramters" << endl
 		<< "sigma_p2 " << param.sigma_p2 << endl
@@ -237,9 +224,7 @@ int main(int argc, char** argv){
 		<< "d_02 " << param.d_02 << endl;
 
 	// Set the remaining parameters.
-	param.noviewer = checkCmdLineFlag(argc, (const char **) argv, "noviewer");
 	param.notimer  = checkCmdLineFlag(argc, (const char **) argv, "notimer");
-	param.nostop   = checkCmdLineFlag(argc, (const char **) argv, "nostop");
 	param.argc     = argc;
 	param.argv     = argv;
 
@@ -249,18 +234,16 @@ int main(int argc, char** argv){
 	// h_X stores points as the order of
 	// [X_x1 X_x2 .... X_x(Xsize-1) X_y1 X_y2 .... X_y(Xsize-1)  X_z1 X_z2 .... X_z(Xsize-1) ],
 	// where (X_xi X_yi X_zi) is the i-th point in X.
-	//
-	// h_Y does as the same way.
-	param.cloud_source.reset ( new pcl::PointCloud<pcl::PointXYZ> () );
-	param.cloud_target.reset ( new pcl::PointCloud<pcl::PointXYZ> () );
-	param.cloud_source_trans.reset ( new pcl::PointCloud<pcl::PointXYZ> () );
+	// h_Y does the same for Y.
+	param.cloud_source.reset(new pcl::PointCloud<pcl::PointXYZ>());
+	param.cloud_target.reset(new pcl::PointCloud<pcl::PointXYZ>());
+
+	// Load the pointclouds from specified files.
 	loadFile(pointFileX, param.cloud_target);
 	loadFile(pointFileY, param.cloud_source);
 
-	{
-		if (checkCmdLineFlag(argc, (const char **) argv, "alignScaleOnce"))
-			alignScaleOnce(param.cloud_target, param.cloud_source);
-	}
+	if (checkCmdLineFlag(argc, (const char **) argv, "alignScaleOnce"))
+		alignScaleOnce(param.cloud_target, param.cloud_source);
 
 	float pointsReductionRate;
 	if ( (pointsReductionRate = getCmdLineArgumentFloat(argc, (const char **) argv, "pointsReductionRate") ) ) {
@@ -280,6 +263,7 @@ int main(int argc, char** argv){
 				<< pointsReductionRate << "% of original." << endl;
 		}
 	}
+
 	cout << "Xsize: " << param.cloud_target->size() << endl
 		<< "Ysize: " << param.cloud_source->size() << endl;
 

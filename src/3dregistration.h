@@ -24,43 +24,40 @@
 */
 #pragma once
 
-//#include <pcl/visualization/cloud_viewer.h>
 #include <boost/shared_array.hpp>
 #include <pcl/common/transforms.h>
 
 // threads in a 2D block is BLOCK_SIZE*BLOCK_SIZE
 #define BLOCK_SIZE 32
 
+/// Struct containing the parameters to do the point cloud registration.
 typedef struct {
-	// for EM-ICP
+	// EM-ICP parameters
 	float sigma_p2;      // initial value for the main loop. sigma_p2 <- sigma_p2 * sigma_factor  at the end of each iteration while sigma_p2 > sigam_inf. default: 0.01
 	float sigma_inf;     // minimum value of sigma_p2. default: 0.00001
 	float sigma_factor;  // facfor for reducing sigma_p2. default: 0.9
 	float d_02;          // values for outlier (see EM-ICP paper). default: 0.01
 
 	// misc
-	int noviewer; // No viewer is shown. Just align point sets, and quit.
-	int nostop;   // No interatction by the viewer is required.
 	int notimer;  // No timer is shown.
-
 	int argc;
 	char **argv;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source_trans;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target;
 } registrationParameters;
 
-#define NOVIEWER
 
 void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
 
+// Find the transformation matrix from the scene.
 void findRTfromS(const float* h_Xc, const float* h_Yc, const float* h_S, float* h_R, float* h_t);
 void printRT(const float* R, const float* t);
 
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float **X, int &Xsize);
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, boost::shared_array<float> &X, int &Xsize);
 
+// Workaround to fix CUDA 4.0 -> CUDA 5.0+ removals of CUDA_SAFE_CALL and CUT_SAFE_CALL
 #define CUDA_SAFE_CALL(a) a
 #define CUT_SAFE_CALL(a) a
 
