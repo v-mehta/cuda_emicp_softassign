@@ -35,6 +35,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/filter_indices.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include "3dregistration.h"
 
@@ -51,28 +52,12 @@ void loadFile(const char* fileName, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 	pcl::removeNaNFromPointCloud(*cloud, *cloud, index);
 }
 
-template <class T>
-class isDelete {
-private:
-	float _random_sampling_percentage;
-
-public:
-	isDelete(float random_sampling_percentage) {
-		srand((long)time(NULL));
-		_random_sampling_percentage = random_sampling_percentage / 100.0;
-	};
-
-	// Operator overload for ().
-	bool operator() (T& val) {
-		return (rand()/(double)RAND_MAX >= _random_sampling_percentage);
-	}
-};
-
-// TODO: USE THE BUILT IN FUNCTION IN PCL!
-/// Sample random points from the pointcloud.
-void pointsReduction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float random_sampling_percentage, bool initialize_rand = true) {
-	isDelete<pcl::PointXYZ> randDel(random_sampling_percentage);
-	cloud->points.erase(std::remove_if(cloud->points.begin(), cloud->points.end(), randDel), cloud->points.end());
+/// Downsample point cloud using voxel grid.
+void pointsReduction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float leaf_size) {
+	pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
+	voxel_filter.setInputCloud(cloud);
+	voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
+	voxel_filter.filter(*cloud);
 }
 
 /// Scale the point cloud.
@@ -245,7 +230,8 @@ int main(int argc, char** argv) {
 	if (checkCmdLineFlag(argc, (const char **) argv, "alignScaleOnce"))
 		alignScaleOnce(param.cloud_target, param.cloud_source);
 
-	float pointsReductionRate;
+	// Downsample scene point cloud.
+	float pointsReductionRate = 0.005;
 	if ( (pointsReductionRate = getCmdLineArgumentFloat(argc, (const char **) argv, "pointsReductionRate") ) ) {
 		pointsReduction(param.cloud_target, pointsReductionRate);
 		pointsReduction(param.cloud_source, pointsReductionRate);
@@ -271,12 +257,14 @@ int main(int argc, char** argv) {
 	float* h_t = new float [3]; // translation vector
 	init_RT(h_R, h_t); // set R to Identity matrix, t to zero vector
 
+	// Set the initial guess for the transformation matrix.
 	char *loadRTfromFilename;
 	if (getCmdLineArgumentString(argc, (const char **) argv, "loadRTfromFile", &loadRTfromFilename)) {
 		loadRTfromFile(h_R, h_t, loadRTfromFilename);
 	} else {
 		init_RT(h_R, h_t); // set R to Identity matrix, t to zero vector
 	}
+	// Print the initial guess.
 	printRT(h_R, h_t);
 
 	clock_t start, end;
@@ -288,6 +276,7 @@ int main(int argc, char** argv) {
 	end = clock();
 	printf("elapsed time: %f\n", (double)(end - start) / CLOCKS_PER_SEC);
 
+	// Print the results and write it to file.
 	printRT(h_R, h_t);
 	char *saveRTtoFilename;
 	if (getCmdLineArgumentString(argc, (const char **) argv, "saveRTtoFile", &saveRTtoFilename))
