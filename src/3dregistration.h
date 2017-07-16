@@ -27,9 +27,6 @@
 #include <boost/shared_array.hpp>
 #include <pcl/common/transforms.h>
 
-// threads in a 2D block is BLOCK_SIZE*BLOCK_SIZE
-#define BLOCK_SIZE 32
-
 /// Struct containing the parameters to do the point cloud registration.
 typedef struct {
 	// EM-ICP parameters
@@ -47,7 +44,6 @@ typedef struct {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target;
 } registrationParameters;
 
-
 void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
 
 // Find the transformation matrix from the scene.
@@ -56,8 +52,4 @@ void printRT(const float* R, const float* t);
 
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float **X, int &Xsize);
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, boost::shared_array<float> &X, int &Xsize);
-
-// Workaround to fix CUDA 4.0 -> CUDA 5.0+ removals of CUDA_SAFE_CALL and CUT_SAFE_CALL
-#define CUDA_SAFE_CALL(a) a
-#define CUT_SAFE_CALL(a) a
 

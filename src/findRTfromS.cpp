@@ -30,136 +30,111 @@
 
 void eigenvectorOfN(double* N, float* q);
 
-void findRTfromS(const float* h_Xc,
-		 const float* h_Yc,
-		 const float* h_S,
-		 float* h_R, float* h_t){
+void findRTfromS(const float* h_Xc, const float* h_Yc, const float* h_S, float* h_R, float* h_t) {
+	#define h_Sxx h_S[0]
+	#define h_Sxy h_S[1]
+	#define h_Sxz h_S[2]
+	#define h_Syx h_S[3]
+	#define h_Syy h_S[4]
+	#define h_Syz h_S[5]
+	#define h_Szx h_S[6]
+	#define h_Szy h_S[7]
+	#define h_Szz h_S[8]
 
-#define h_Sxx h_S[0]
-#define h_Sxy h_S[1]
-#define h_Sxz h_S[2]
-#define h_Syx h_S[3]
-#define h_Syy h_S[4]
-#define h_Syz h_S[5]
-#define h_Szx h_S[6]
-#define h_Szy h_S[7]
-#define h_Szz h_S[8]
+	#define h_Xcx h_Xc[0]
+	#define h_Xcy h_Xc[1]
+	#define h_Xcz h_Xc[2]
+	#define h_Ycx h_Yc[0]
+	#define h_Ycy h_Yc[1]
+	#define h_Ycz h_Yc[2]
 
-#define h_Xcx h_Xc[0]
-#define h_Xcy h_Xc[1]
-#define h_Xcz h_Xc[2]
-#define h_Ycx h_Yc[0]
-#define h_Ycy h_Yc[1]
-#define h_Ycz h_Yc[2]
+	double N[4*4]; for(int n=0;n<16;n++) N[n] = 0.0;
+	float q[4];    for(int a=0;a<4;a++)  q[a] = 0.0f;
 
+	N[ 0] = h_Sxx + h_Syy + h_Szz;
+	N[ 1] = h_Syz - h_Szy;
+	N[ 2] = h_Szx - h_Sxz;
+	N[ 3] = h_Sxy - h_Syx;
+	N[ 4] = h_Syz - h_Szy;
+	N[ 5] = h_Sxx - h_Syy - h_Szz;
+	N[ 6] = h_Sxy + h_Syx;
+	N[ 7] = h_Szx + h_Sxz;
+	N[ 8] = h_Szx - h_Sxz;
+	N[ 9] = h_Sxy + h_Syx;
+	N[10] = h_Syy - h_Sxx - h_Szz;
+	N[11] = h_Syz + h_Szy;
+	N[12] = h_Sxy - h_Syx;
+	N[13] = h_Szx + h_Sxz;
+	N[14] = h_Syz + h_Szy;
+	N[15] = h_Szz - h_Sxx - h_Syy;
 
-  double N[4*4]; for(int n=0;n<16;n++) N[n] = 0.0;
-  float q[4];    for(int a=0;a<4;a++)  q[a] = 0.0f;
+	// computer the eigenvector corresponding the largest eivenvalue
+	eigenvectorOfN(N, q);
 
-  N[ 0] = h_Sxx + h_Syy + h_Szz;
-  N[ 1] = h_Syz - h_Szy;
-  N[ 2] = h_Szx - h_Sxz;
-  N[ 3] = h_Sxy - h_Syx;
-  N[ 4] = h_Syz - h_Szy;
-  N[ 5] = h_Sxx - h_Syy - h_Szz;
-  N[ 6] = h_Sxy + h_Syx;
-  N[ 7] = h_Szx + h_Sxz;
-  N[ 8] = h_Szx - h_Sxz;
-  N[ 9] = h_Sxy + h_Syx;
-  N[10] = h_Syy - h_Sxx - h_Szz;
-  N[11] = h_Syz + h_Szy;
-  N[12] = h_Sxy - h_Syx;
-  N[13] = h_Szx + h_Sxz;
-  N[14] = h_Syz + h_Szy;
-  N[15] = h_Szz - h_Sxx - h_Syy;
+	float q0 = q[0], qx = q[1], qy = q[2], qz = q[3];
 
-  // computer the eigenvector corresponding the largest eivenvalue
-  eigenvectorOfN(N, q);
+	// quaternion to rotation matrix
+	h_R[0] = q0*q0 + qx*qx - qy*qy - qz*qz;
+	h_R[1] = 2 * (qx*qy - q0*qz);
+	h_R[2] = 2 * (qx*qz + q0*qy);
+	h_R[3] = 2 * (qy*qx + q0*qz);
+	h_R[4] = q0*q0 - qx*qx + qy*qy - qz*qz;
+	h_R[5] = 2 * (qy*qz - q0*qx);
+	h_R[6] = 2 * (qz*qx - q0*qy);
+	h_R[7] = 2 * (qz*qy + q0*qx);
+	h_R[8] = q0*q0 - qx*qx - qy*qy + qz*qz;
 
-
-  float q0 = q[0], qx = q[1], qy = q[2], qz = q[3];
-
-  // quaternion to rotation matrix
-  h_R[0] = q0*q0 + qx*qx - qy*qy - qz*qz;
-  h_R[1] = 2 * (qx*qy - q0*qz);
-  h_R[2] = 2 * (qx*qz + q0*qy);
-  h_R[3] = 2 * (qy*qx + q0*qz);
-  h_R[4] = q0*q0 - qx*qx + qy*qy - qz*qz;
-  h_R[5] = 2 * (qy*qz - q0*qx);
-  h_R[6] = 2 * (qz*qx - q0*qy);
-  h_R[7] = 2 * (qz*qy + q0*qx);
-  h_R[8] = q0*q0 - qx*qx - qy*qy + qz*qz;
-
-  // translation vector
-  h_t[0] = h_Xcx - (h_R[0]*h_Ycx + h_R[1]*h_Ycy + h_R[2]*h_Ycz);
-  h_t[1] = h_Xcy - (h_R[3]*h_Ycx + h_R[4]*h_Ycy + h_R[5]*h_Ycz);
-  h_t[2] = h_Xcz - (h_R[6]*h_Ycx + h_R[7]*h_Ycy + h_R[8]*h_Ycz);
+	// translation vector
+	h_t[0] = h_Xcx - (h_R[0]*h_Ycx + h_R[1]*h_Ycy + h_R[2]*h_Ycz);
+	h_t[1] = h_Xcy - (h_R[3]*h_Ycx + h_R[4]*h_Ycy + h_R[5]*h_Ycz);
+	h_t[2] = h_Xcz - (h_R[6]*h_Ycx + h_R[7]*h_Ycy + h_R[8]*h_Ycz);
 }
 
-
-
+// Declare dsyev function from liblapack.
 extern "C" {
-int dsyev_(char *jobz, char *uplo, 
-	   int *n, double *a, int *lda, 
-	   double *w, double *work, int *lwork, 
-	   int *info);
+	int dsyev_(char *jobz, char *uplo,
+		int *n, double *a, int *lda,
+		double *w, double *work, int *lwork,
+		int *info);
 }
 
-void eigenvectorOfN(double *N, float* q){
-  
-  static float q_pre[4]; // previous result
+void eigenvectorOfN(double *N, float* q) {
+	static float q_pre[4]; // previous result
+	int dimN = 4;
+	double w[4]; // eigenvalues
+	double *work = new double; // workspace
+	int info;
+	int lwork = -1;
 
-  int dimN = 4;
-  double w[4]; // eigenvalues
-  double *work = new double; // workspace
-  int info;
-  int lwork = -1;
+	dsyev_((char*)"V", (char*)"U", &dimN, N, &dimN, w, work, &lwork, &info);
+	if (info != 0) {
+		fprintf(stderr, "info = %d\n", info);
+		exit(1);
+	}
 
-  dsyev_((char*)"V", (char*)"U",
-	 &dimN, N, &dimN,
-	 w, work, &lwork, &info);
-  if(info != 0){
-    fprintf(stderr, "info = %d\n", info);
-    exit(1);
-  }
-  lwork = (int)work[0];
-  delete work;
+	lwork = (int)work[0];
+	delete work;
 
-  work = new double [lwork];
+	work = new double [lwork];
+	dsyev_((char*)"V", (char*)"U", &dimN, N, &dimN, w, work, &lwork, &info);
+	delete [] work;
 
-  dsyev_((char*)"V", (char*)"U",
-	 &dimN, N, &dimN,
-	 w, work, &lwork, &info);
-
-  delete [] work;
-
-
-  if(info != 0){
-    fprintf(stderr, "computing eigenvector FAIL! info = %d\n", info);
-    //exit(1);
-
-    // if fail, put back the previous result
-    for(int i=0; i<4; i++){
-      q[i] = q_pre[i];
-    }
-
-
-  }else{
-
-    // last column of N is the eigenvector of the largest eigenvalue 
-    // and N is stored column-major
-    for(int i=0; i<4; i++){
-      q[i] = N[4*3 + i];
-      q_pre[i] = q[i];
-    }
-    
-  }
-
-
+	// Put back the previous result if computing eigenvector failed.
+	if (info != 0) {
+		fprintf(stderr, "computing eigenvector FAIL! info = %d\n", info);
+		for (int i = 0; i < 4; i++) {
+			q[i] = q_pre[i];
+		}
+	} else {
+		// Last column of N is the eigenvector of the largest eigenvalue and N is stored column-major.
+		for (int i = 0; i < 4; i++) {
+			q[i] = N[4*3 + i];
+			q_pre[i] = q[i];
+		}
+	}
 }
 
-/*
-*  =========
+/* =========
 *
 *  JOBZ    (input) CHARACTER*1
 *          = 'N':  Compute eigenvalues only;
@@ -209,6 +184,4 @@ void eigenvectorOfN(double *N, float* q){
 *          > 0:  if INFO = i, the algorithm failed to converge; i
 *                off-diagonal elements of an intermediate tridiagonal
 *                form did not converge to zero.
-*
-*  =====================================================================
-*/
+*  ===================================================================== */

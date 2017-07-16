@@ -23,8 +23,6 @@
   OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <iostream>
-#include <algorithm>
 #include <cstdio>
 
 #include <cublas.h>
@@ -33,7 +31,13 @@
 
 #include "3dregistration.h"
 
-using namespace std;
+// threads in a 2D block is BLOCK_SIZE*BLOCK_SIZE
+#define BLOCK_SIZE 32
+
+// TODO: Remove this workaraound properly.
+// Workaround to fix CUDA 4.0 -> CUDA 5.0+ removals of CUDA_SAFE_CALL and CUT_SAFE_CALL
+#define CUDA_SAFE_CALL(a) a
+#define CUT_SAFE_CALL(a) a
 
 __global__ static void
 updateA(int rowsA, int colsA, int pitchA,
@@ -89,7 +93,6 @@ updateA(int rowsA, int colsA, int pitchA,
 		//       Euclid(Xx - (R(0)*Yx + R(1)*Yy + R(2)*Yz + t(0)),
 		//              Xy - (R(3)*Yx + R(4)*Yy + R(5)*Yz + t(1)),
 		//              Xz - (R(6)*Yx + R(7)*Yy + R(8)*Yz + t(2)) );
-
 		//     tmp = expf(-tmp/sigma_p^2)
 
 		float tmpX = Xx - (R(0)*Yx + R(1)*Yy + R(2)*Yz + t(0));
@@ -114,7 +117,6 @@ updateA(int rowsA, int colsA, int pitchA,
 	}
 }
 
-
 __global__ static void
 normalizeRowsOfA(int rowsA, int colsA, int pitchA, float *d_A, const float *d_C) {
 	int r =  blockIdx.x * blockDim.x + threadIdx.x;
@@ -129,7 +131,7 @@ normalizeRowsOfA(int rowsA, int colsA, int pitchA, float *d_A, const float *d_C)
 		__syncthreads();
 
 		if (d_CShare[threadIdx.x] > 10e-7f) {
-			// each element in A is normalized C, then squre-rooted
+			// each element in A is normalized C, then square-rooted
 			d_A[c * pitchA + r] = sqrtf( d_A[c * pitchA + r] / d_CShare[threadIdx.x] );
 		} else {
 			d_A[c * pitchA + r] = 1.0f/colsA; // ad_hoc code to avoid 0 division
@@ -151,10 +153,7 @@ elementwiseDivision(int Xsize, float* d_Xx, float* d_Xy, float* d_Xz, const floa
 }
 
 __global__ static void
-elementwiseMultiplication(int Xsize,
-	float* d_Xx, float* d_Xy, float* d_Xz,
-	const float* d_lambda){
-
+elementwiseMultiplication(int Xsize, float* d_Xx, float* d_Xy, float* d_Xz, const float* d_lambda) {
 	int x =  blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (x < Xsize) { // check for only inside X
@@ -175,34 +174,28 @@ centeringXandY(int rowsA,
 ) {
 
 	// do for both X and Y at the same time
-
 	int r =  blockIdx.x * blockDim.x + threadIdx.x;
 
 	// Shared memory
 	__shared__ float Xc[3];
 	__shared__ float Yc[3];
 
-	if(threadIdx.x < 6) // assume blocksize >= 6
-		if(threadIdx.x < 3) 
+	if (threadIdx.x < 6) // assume blocksize >= 6
+		if (threadIdx.x < 3)
 			Xc[threadIdx.x] = d_Xc[threadIdx.x];
 		else
 			Yc[threadIdx.x - 3] = d_Yc[threadIdx.x - 3];
 
 
-	if(r < rowsA){ // check for only inside the vectors
-
+	if (r < rowsA) { // check for only inside the vectors
 		__syncthreads();
-
 		d_XxCenterd[r] = d_Xx[r] - Xc[0];
 		d_XyCenterd[r] = d_Xy[r] - Xc[1];
 		d_XzCenterd[r] = d_Xz[r] - Xc[2];
-
 		d_YxCenterd[r] = d_Yx[r] - Yc[0];
 		d_YyCenterd[r] = d_Yy[r] - Yc[1];
 		d_YzCenterd[r] = d_Yz[r] - Yc[2];
-
 		__syncthreads();
-
 	}
 }
 
@@ -306,7 +299,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	memCUDA(C, rowsA); // sum of a row in A
 	memCUDA(lambda, rowsA); // weight of a row in A
 
-	// threads
+	// Threads configuration.
 
 	// for 2D block
 	dim3 dimBlockForA(BLOCK_SIZE, BLOCK_SIZE); // a block is (BLOCK_SIZE*BLOCK_SIZE) threads
@@ -353,7 +346,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 		// Call kernel to update A.
 		START_TIMER(timerUpdateA);
-		updateA <<< dimGridForA, dimBlockForA >>>
+		updateA <<<dimGridForA, dimBlockForA>>>
 			(rowsA, colsA, pitchA,
 				d_Xx, d_Xy, d_Xz,
 				d_Yx, d_Yy, d_Yz,
@@ -361,12 +354,10 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 				d_A, sigma_p2);
 		STOP_TIMER(timerUpdateA);
 
-		// Normalization of A
-
+		// Normalize  A
 		// cublasSgemv (char trans, int m, int n, float alpha, const float *A, int lda,
 		//              const float *x, int incx, float beta, float *y, int incy)
 		//    y = alpha * op(A) * x + beta * y,
-
 		// A * one vector = vector with elements of row-wise sum
 		//     d_A      *    d_one    =>  d_C
 		//(rowsA*colsA) *  (colsA*1)  =  (rowsA*1)
@@ -384,14 +375,11 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		cublasSaxpy(rowsA, expf(-d_02/sigma_p2), d_one, 1, d_C, 1);
 
 		// Call CUDA kernel to normalize rows of A.
-		normalizeRowsOfA <<< dimGridForA, dimBlockForA >>> (rowsA, colsA, pitchA, d_A, d_C);
+		normalizeRowsOfA <<<dimGridForA, dimBlockForA>>> (rowsA, colsA, pitchA, d_A, d_C);
 
 		// update R,T
-
 		///////////////////////////////////////////////////////////////////////////////////// 
-
 		// compute lambda
-
 		// A * one vector = vector with elements of row-wise sum
 		//     d_A      *    d_one    =>  d_lambda
 		//(rowsA*colsA) *  (colsA*1)  =  (rowsA*1)
@@ -426,7 +414,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 			0.0f, d_Xprime, rowsA);
 
 		// X' ./ lambda => X'
-		elementwiseDivision <<< blocksPerGridForYsize, threadsPerBlockForYsize>>> (rowsA, d_XprimeX, d_XprimeY, d_XprimeZ, d_lambda);
+		elementwiseDivision <<<blocksPerGridForYsize, threadsPerBlockForYsize>>> (rowsA, d_XprimeX, d_XprimeY, d_XprimeZ, d_lambda);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
 		// centering X' and Y
@@ -465,7 +453,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 		// d_Xprime .- d_Xc => d_XprimeCenterd
 		// d_Y      .- d_Yc => d_YCenterd
-		centeringXandY <<< blocksPerGridForYsize, threadsPerBlockForYsize>>>
+		centeringXandY <<<blocksPerGridForYsize, threadsPerBlockForYsize>>>
 			(rowsA, 
 				d_Xc, d_Yc,
 				d_XprimeX, d_XprimeY, d_XprimeZ,
@@ -474,7 +462,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 				d_YCenterdX, d_YCenterdY, d_YCenterdZ);
 
 		// XprimeCented .* d_lambda => XprimeCented
-		elementwiseMultiplication <<< blocksPerGridForYsize, threadsPerBlockForYsize>>> (rowsA, d_XprimeCenterdX, d_XprimeCenterdY, d_XprimeCenterdZ, d_lambda);
+		elementwiseMultiplication <<<blocksPerGridForYsize, threadsPerBlockForYsize>>> (rowsA, d_XprimeCenterdX, d_XprimeCenterdY, d_XprimeCenterdZ, d_lambda);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
 		// compute S
