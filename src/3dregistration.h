@@ -29,7 +29,7 @@
 #include <pcl/common/transforms.h>
 
 // threads in a 2D block is BLOCK_SIZE*BLOCK_SIZE
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 32
 
 typedef struct {
 	// for EM-ICP
@@ -37,23 +37,6 @@ typedef struct {
 	float sigma_inf;     // minimum value of sigma_p2. default: 0.00001
 	float sigma_factor;  // facfor for reducing sigma_p2. default: 0.9
 	float d_02;          // values for outlier (see EM-ICP paper). default: 0.01
-
-	/*
-	//boost::shared_ptr< pcl::visualization::PCLVisualizer > viewer;
-	//pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr source_trans_color;// ( cloud_source_trans, 255, 0, 255 );
-
-	// for softassign
-	int JMAX;      // Number of iterations for the annealing loop (1st loop). At first, the annealing temprature T is set to T_0, then T <- T*TFACOR at the end of each iteration. default: 100
-	int I0;        // Number of iterations with the same temprature (2nd loop). default: 5
-	int I1;        // Number of iterations for Shinkhorn’s row/column normalizations. default: 3
-	float alpha;   // parameter for outliers (see the original Softassign paper). default: 3.0
-	float T_0;     // initial temprature for the annealing process. default: 100.0
-	float TFACTOR; // factor for reducing temprature. default: 0.95
-	float moutlier;// values of elements in the extra row/column for outliers (see the original Softassign paper). default: 1/sqrtf(T_0)*expf(-1.0f)
-
-	// for ICP
-	int maxIteration; // Number of ICP iterations. default: 30
-	*/
 
 	// misc
 	int noviewer; // No viewer is shown. Just align point sets, and quit.
@@ -70,12 +53,7 @@ typedef struct {
 
 #define NOVIEWER
 
-//void softassign(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
-
 void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
-
-//void emicp_cpu(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
-//void icp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
 
 void findRTfromS(const float* h_Xc, const float* h_Yc, const float* h_S, float* h_R, float* h_t);
 void printRT(const float* R, const float* t);

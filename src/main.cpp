@@ -32,15 +32,9 @@
 
 #include <helper_string.h>
 
-#include <pcl/io/ply_io.h>
-#include <pcl/io/vtk_lib_io.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-//#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/filters/filter_indices.h>
-
-//#include <vtkRenderWindow.h>
-//#include <vtkRendererCollection.h>
-//#include <vtkCamera.h>
 
 #include "3dregistration.h"
 
@@ -50,15 +44,12 @@ using namespace std;
 void loadFile(const char* fileName, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 	pcl::PolygonMesh mesh;
 
-	if (pcl::io::loadPolygonFile(fileName, mesh) == -1) {
-		PCL_ERROR ( "loadFile faild." );
+	if (pcl::io::loadPCDFile(fileName, *cloud) == -1) {
+		std::cerr << "Failed to read PCD file: " << fileName << std::endl;
 		return;
-	} else {
-		pcl::fromPCLPointCloud2<pcl::PointXYZ> (mesh.cloud, *cloud);
 	}
 
-	// TODO: jettan: doesn't this destroy the structure?
-	// remove points having values of nan
+	// Remove NaN values.
 	std::vector<int> index;
 	pcl::removeNaNFromPointCloud(*cloud, *cloud, index);
 }
@@ -237,7 +228,7 @@ int main(int argc, char** argv){
 	if (! (param.sigma_p2     = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_p2") ) )     param.sigma_p2 = 0.01f;
 	if (! (param.sigma_inf    = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_inf") ) )    param.sigma_inf = 0.00001f;
 	if (! (param.sigma_factor = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_factor") ) ) param.sigma_factor = 0.9f;
-	if (! (param.d_02         = getCmdLineArgumentFloat(argc, (const char **) argv, "d_02") ) )	       param.d_02 = 0.01f;       
+	if (! (param.d_02         = getCmdLineArgumentFloat(argc, (const char **) argv, "d_02") ) )	       param.d_02 = 0.01f;
 
 	cout << "EM-ICP paramters" << endl
 		<< "sigma_p2 " << param.sigma_p2 << endl

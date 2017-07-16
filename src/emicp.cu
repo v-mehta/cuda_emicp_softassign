@@ -532,23 +532,12 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 		///////////////////////////////////////////////////////////////////////////////////// 
 
- #ifndef NOVIEWER
 		Eigen::Matrix4f transformation;
 		transformation <<
 			h_R[0], h_R[1], h_R[2], h_t[0],
 			h_R[3], h_R[4], h_R[5], h_t[1],
 			h_R[6], h_R[7], h_R[8], h_t[2],
 			0, 0, 0, 1;
-
-		// Transform the pointcloud and visualize if viewer is active.
-		/*
-		if (!param.noviewer) {
-				pcl::transformPointCloud(*param.cloud_source, *param.cloud_source_trans, transformation);
-				param.viewer->updatePointCloud(param.cloud_source_trans, *param.source_trans_color, "source trans");
-				param.viewer->spinOnce();
-		}
-		*/
- #endif
 
 		sigma_p2 *= sigma_factor;
 	}
@@ -571,7 +560,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	}
 
 	// Shutdown CUBLAS API.
-	cublasShutdown();
+	//cublasShutdown();
 
 	// Do CUDA memory cleaning.
 	CUDA_SAFE_CALL(cudaFree(d_X));
