@@ -541,11 +541,13 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 			0, 0, 0, 1;
 
 		// Transform the pointcloud and visualize if viewer is active.
+		/*
 		if (!param.noviewer) {
 				pcl::transformPointCloud(*param.cloud_source, *param.cloud_source_trans, transformation);
 				param.viewer->updatePointCloud(param.cloud_source_trans, *param.source_trans_color, "source trans");
 				param.viewer->spinOnce();
 		}
+		*/
  #endif
 
 		sigma_p2 *= sigma_factor;

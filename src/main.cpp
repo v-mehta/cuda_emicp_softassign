@@ -33,9 +33,9 @@
 #include <helper_string.h>
 
 #include <pcl/io/ply_io.h>
-//#include <pcl/io/vtk_lib_io.h>
+#include <pcl/io/vtk_lib_io.h>
 #include <pcl/point_types.h>
-#include <pcl/visualization/cloud_viewer.h>
+//#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/filters/filter_indices.h>
 
 //#include <vtkRenderWindow.h>
@@ -62,7 +62,6 @@ void loadFile(const char* fileName, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 	std::vector<int> index;
 	pcl::removeNaNFromPointCloud(*cloud, *cloud, index);
 }
-
 
 template <class T>
 class isDelete {
@@ -214,11 +213,8 @@ void loadRTfromFile(float* R, float* t, const char* filename){
 
 
 int main(int argc, char** argv){
-	// Parse arguments.
-
 	char *pointFileX, *pointFileY;
 	int wrongArg = 0;
-
 
 	// Read filenames of point clouds X and Y.
 	// File format is txt or ply. see readPointsFromFile() or readPointsFromPLYFile().
@@ -232,62 +228,22 @@ int main(int argc, char** argv){
 		exit(1);
 	}
 
-
 	int Xsize, Ysize;
-
-	// select algorithm
-	int isICP = checkCmdLineFlag(argc, (const char **) argv, "icp");
-	int isEMICP = checkCmdLineFlag(argc, (const char **) argv, "emicp");
-	int isEMICP_CPU = checkCmdLineFlag(argc, (const char **) argv, "emicpcpu");
-	int isSoftassign = checkCmdLineFlag(argc, (const char **) argv, "softassign");
-
-	// Use softassign as default algorithm if nothing has been selected by user.
-	if (!isICP && !isEMICP && !isEMICP_CPU && !isSoftassign)
-		isSoftassign = 1;
 
 	// initialize parameters
 	registrationParameters param;
 
-	// Initialize softassign parameters.
-	if (isSoftassign) {
-		if (! (param.JMAX  = getCmdLineArgumentInt(argc, (const char **) argv, "JMAX") ) ) param.JMAX = 100;
-		if (! (param.I0    = getCmdLineArgumentInt(argc, (const char **) argv, "I0"  ) ) ) param.I0 = 5;
-		if (! (param.I1    = getCmdLineArgumentInt(argc, (const char **) argv, "I1"  ) ) ) param.I1 = 3;
-		if (! (param.alpha = getCmdLineArgumentFloat(argc, (const char **) argv, "alpha") ) ) param.alpha = 3.0f;
-		if (! (param.T_0   = getCmdLineArgumentFloat(argc, (const char **) argv, "T_0"  ) ) ) param.T_0 = 100.0f;
-		if (! (param.TFACTOR  = getCmdLineArgumentFloat(argc, (const char **) argv, "TFACTOR" ) ) ) param.TFACTOR = 0.95f;
-		if (! (param.moutlier = getCmdLineArgumentFloat(argc, (const char **) argv, "moutlier") ) ) param.moutlier = (float)(1/sqrtf(param.T_0)*expf(-1.0f));
-
-		cout << "softassgin paramters" << endl
-			<< "JMAX " << param.JMAX << endl
-			<< "I0 " << param.I0 << endl
-			<< "I1 " << param.I1 << endl
-			<< "alpha " << param.alpha << endl
-			<< "T_0 " << param.T_0 << endl
-			<< "TFACTOR " << param.TFACTOR << endl
-			<< "moutlier " << param.moutlier << endl;
-
-	// Initialize ICP parameters.
-	} else if (isICP) {
-		if (! (param.maxIteration = getCmdLineArgumentInt(argc, (const char **) argv, "maxIteration")) )
-			param.maxIteration = 30; // default parameters
-
-		cout << "ICP paramters" << endl
-			<< "maxIteration " << param.maxIteration << endl;
-
 	// Initialize EM-ICP parameters.
-	} else if (isEMICP || isEMICP_CPU) {
-		if (! (param.sigma_p2     = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_p2") ) )     param.sigma_p2 = 0.01f;
-		if (! (param.sigma_inf    = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_inf") ) )    param.sigma_inf = 0.00001f;
-		if (! (param.sigma_factor = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_factor") ) ) param.sigma_factor = 0.9f;
-		if (! (param.d_02         = getCmdLineArgumentFloat(argc, (const char **) argv, "d_02") ) )	       param.d_02 = 0.01f;       
+	if (! (param.sigma_p2     = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_p2") ) )     param.sigma_p2 = 0.01f;
+	if (! (param.sigma_inf    = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_inf") ) )    param.sigma_inf = 0.00001f;
+	if (! (param.sigma_factor = getCmdLineArgumentFloat(argc, (const char **) argv, "sigma_factor") ) ) param.sigma_factor = 0.9f;
+	if (! (param.d_02         = getCmdLineArgumentFloat(argc, (const char **) argv, "d_02") ) )	       param.d_02 = 0.01f;       
 
-		cout << "EM-ICP paramters" << endl
-			<< "sigma_p2 " << param.sigma_p2 << endl
-			<< "sigma_inf " << param.sigma_inf << endl
-			<< "sigma_factor " << param.sigma_factor << endl
-			<< "d_02 " << param.d_02 << endl;
-	}
+	cout << "EM-ICP paramters" << endl
+		<< "sigma_p2 " << param.sigma_p2 << endl
+		<< "sigma_inf " << param.sigma_inf << endl
+		<< "sigma_factor " << param.sigma_factor << endl
+		<< "d_02 " << param.d_02 << endl;
 
 	// Set the remaining parameters.
 	param.noviewer = checkCmdLineFlag(argc, (const char **) argv, "noviewer");
@@ -336,89 +292,31 @@ int main(int argc, char** argv){
 	cout << "Xsize: " << param.cloud_target->size() << endl
 		<< "Ysize: " << param.cloud_source->size() << endl;
 
-	/*
-	if (!param.noviewer){
-		param.viewer.reset ( new pcl::visualization::PCLVisualizer ("3D Viewer") );
-		param.viewer->setBackgroundColor (0, 0, 0);
-
-		pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_color ( param.cloud_source, 0, 255, 0 );
-		param.viewer->addPointCloud<pcl::PointXYZ> ( param.cloud_source, source_color, "source");
-		param.viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "source");
-
-		pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> target_color ( param.cloud_target, 255, 255, 255 );
-		param.viewer->addPointCloud<pcl::PointXYZ> ( param.cloud_target, target_color, "target");
-		param.viewer->setPointCloudRenderingProperties ( pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "target" );
-
-		param.source_trans_color.reset ( new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> ( param.cloud_source_trans, 255, 0, 255) );
-		param.viewer->addPointCloud<pcl::PointXYZ> ( param.cloud_source_trans, *param.source_trans_color, "source trans" );
-		param.viewer->setPointCloudRenderingProperties ( pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "source trans" );
-
-		// orthographic (parallel) projection; same with pressing key 'o'
-		param.viewer->getRenderWindow()->GetRenderers()->GetFirstRenderer()->GetActiveCamera()->SetParallelProjection( 1 );
-
-		param.viewer->resetCamera();
-
-		if (!param.nostop) {
-			cout << "Press q to continue." << endl;
-			param.viewer->spin();
-		}
-	}
-	*/
-
 	float* h_R = new float [9]; // rotation matrix
 	float* h_t = new float [3]; // translation vector
 	init_RT(h_R, h_t); // set R to Identity matrix, t to zero vector
 
-	do {
-		{
-			char *loadRTfromFilename;
-			if (getCmdLineArgumentString(argc, (const char **) argv, "loadRTfromFile", &loadRTfromFilename)) {
-				loadRTfromFile(h_R, h_t, loadRTfromFilename);
-			} else {
-				init_RT(h_R, h_t); // set R to Identity matrix, t to zero vector
-			}
-		}
-		printRT(h_R, h_t);
-
-		clock_t start, end;
-		start = clock();
-
-		if(isICP)
-			icp( param.cloud_target, param.cloud_source, // input
-				h_R, h_t, // return
-				param);
-		if(isEMICP)
-			emicp( param.cloud_target, param.cloud_source, // input
-				h_R, h_t, // return
-				param);
-		if(isEMICP_CPU)
-			emicp_cpu( param.cloud_target, param.cloud_source, // input
-				h_R, h_t, // return
-				param);
-		if(isSoftassign)
-			softassign( param.cloud_target, param.cloud_source, // input
-				h_R, h_t, // return
-				param);
-
-		end = clock();
-		printf("elapsed time: %f\n", (double)(end - start) / CLOCKS_PER_SEC);
-
-		printRT(h_R, h_t);
-		{
-			char *saveRTtoFilename;
-			if(getCmdLineArgumentString(argc, (const char **) argv, "saveRTtoFile", &saveRTtoFilename))
-				saveRTtoFile(h_R, h_t, saveRTtoFilename);
-		}
-
-		if ( param.noviewer || param.nostop || param.viewer->wasStopped() )
-			break;
-		else
-			param.viewer->spin();
-
+	char *loadRTfromFilename;
+	if (getCmdLineArgumentString(argc, (const char **) argv, "loadRTfromFile", &loadRTfromFilename)) {
+		loadRTfromFile(h_R, h_t, loadRTfromFilename);
+	} else {
+		init_RT(h_R, h_t); // set R to Identity matrix, t to zero vector
 	}
+	printRT(h_R, h_t);
 
-	// Block until viewer is stopped.
-	while(!param.viewer->wasStopped());
+	clock_t start, end;
+	start = clock();
+
+	// Call the function that executes the algorithm.
+	emicp(param.cloud_target, param.cloud_source, h_R, h_t, param);
+
+	end = clock();
+	printf("elapsed time: %f\n", (double)(end - start) / CLOCKS_PER_SEC);
+
+	printRT(h_R, h_t);
+	char *saveRTtoFilename;
+	if (getCmdLineArgumentString(argc, (const char **) argv, "saveRTtoFile", &saveRTtoFilename))
+		saveRTtoFile(h_R, h_t, saveRTtoFilename);
 
 	// Clean up.
 	delete [] h_X;
