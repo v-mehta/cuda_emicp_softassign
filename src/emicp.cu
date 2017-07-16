@@ -204,7 +204,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	int Xsize, Ysize;
 	float *h_X, *h_Y;
 
-	// Convert scene and ground truth pointclouds to raw data for the GPU.
+	// Convert scene and model pointclouds to raw data for the GPU.
 	cloud2data(cloud_target, &h_X, Xsize);
 	cloud2data(cloud_source, &h_Y, Ysize);
 

@@ -24,7 +24,6 @@
 */
 #pragma once
 
-#include <boost/shared_array.hpp>
 #include <pcl/common/transforms.h>
 
 /// Struct containing the parameters to do the point cloud registration.
@@ -51,5 +50,4 @@ void findRTfromS(const float* h_Xc, const float* h_Yc, const float* h_S, float* 
 void printRT(const float* R, const float* t);
 
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float **X, int &Xsize);
-void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, boost::shared_array<float> &X, int &Xsize);
 
