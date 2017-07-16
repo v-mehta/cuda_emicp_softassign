@@ -32,15 +32,9 @@
 #include <pcl/filters/filter_indices.h>
 #include <pcl/common/transforms.h>
 
-
-
 #include <vtkRenderWindow.h>
 #include <vtkRendererCollection.h>
 #include <vtkCamera.h>
-
-
-
-
 
 void
 loadFile(const char* fileName,

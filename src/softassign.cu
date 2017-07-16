@@ -31,16 +31,12 @@
 #include <helper_cuda.h>
 #include <helper_timer.h>
 
-
 // uncomment if you do not use the viewer.
-//#define NOVIEWER
+#define NOVIEWER
 
 #include "3dregistration.h"
 
 using namespace std;
-
-
-
 
 __global__ static void
 updateM(int rowsM, int colsM, int pitchM,

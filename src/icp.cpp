@@ -27,45 +27,33 @@
 #include <iostream>
 
 #include <boost/shared_array.hpp>
-
 #include <flann/flann.hpp>
 
-
 // uncomment if you do not use the viewer.
-//#define NOVIEWER
+#define NOVIEWER
 
 #include "3dregistration.h"
 
-
 extern "C" {
-  int sgemm_(const char *transa, const char *transb, const int *m, const int *n, const int *k,
-             const float *alpha, const float *a, const int *lda, const float *b, const int *ldb,
-             const float *beta, float *c, const int *ldc);
+	int sgemm_(const char *transa, const char *transb, const int *m, const int *n, const int *k,
+		const float *alpha, const float *a, const int *lda, const float *b, const int *ldb,
+		const float *beta, float *c, const int *ldc);
 }
 
-inline static float
-distanceSquare(float x1, float y1, float z1,
-	       float x2, float y2, float z2){
+inline static float distanceSquare(float x1, float y1, float z1, float x2, float y2, float z2) {
+	float tmpx = (x1 - x2);
+	float tmpy = (y1 - y2);
+	float tmpz = (z1 - z2);
 
-  float tmpx = (x1 - x2);
-  float tmpy = (y1 - y2);
-  float tmpz = (z1 - z2);
-
-  return tmpx*tmpx + tmpy*tmpy + tmpz*tmpz;
+	return tmpx*tmpx + tmpy*tmpy + tmpz*tmpz;
 }
 
-inline static float
-distanceSquareRT(float x1, float y1, float z1,
-		 float x2, float y2, float z2, float* h_R, float* h_t){
-
-  return distanceSquare(x1, y1, z1,
-			(h_R[0]*x2 + h_R[1]*y2 + h_R[2]*z2) + h_t[0],
-			(h_R[3]*x2 + h_R[4]*y2 + h_R[5]*z2) + h_t[1],
-			(h_R[6]*x2 + h_R[7]*y2 + h_R[8]*z2) + h_t[2]);
-
+inline static float distanceSquareRT(float x1, float y1, float z1, float x2, float y2, float z2, float* h_R, float* h_t) {
+	return distanceSquare(x1, y1, z1,
+		(h_R[0]*x2 + h_R[1]*y2 + h_R[2]*z2) + h_t[0],
+		(h_R[3]*x2 + h_R[4]*y2 + h_R[5]*z2) + h_t[1],
+		(h_R[6]*x2 + h_R[7]*y2 + h_R[8]*z2) + h_t[2]);
 }
-
-
 
 #if 1
 static void
@@ -115,35 +103,17 @@ findCenter(const float* h_X, const int Xsize,
 }
 #endif
 
-
-
-
-
-void icp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, 
-	 const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source,
-	 float* h_R, float* h_t, 
-	 const registrationParameters &param)
-{
-  
-  
+void icp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param) {
   int Xsize, Ysize;
   boost::shared_array<float> h_X, h_Y;
   cloud2data(cloud_target, h_X, Xsize);
   cloud2data(cloud_source, h_Y, Ysize);
-  
-  
-  
-  //
+
   // initialize paramters
-  //
   int maxIteration = param.maxIteration;
 
 
-  //
-  // memory allocation
-  //
-  
-  
+  // Allocate memory.
   float* h_Xx = h_X.get() + Xsize*0;
   float* h_Xy = h_X.get() + Xsize*1;
   float* h_Xz = h_X.get() + Xsize*2;
@@ -154,26 +124,23 @@ void icp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target,
 
   boost::shared_array<float> h_Xcorr ( new float[Ysize*3] ); // points in X corresponding to Y
 
-
   float h_S[9];
   float h_Xc[3];
   float h_Yc[3];
 
   findCenter(h_Y.get(), Ysize, h_Yc);
 
-
-
   // building flann index
   boost::shared_array<float> m_X ( new float [Xsize*3] );
-  for (int i = 0; i < Xsize; i++)
-  {
+  for (int i = 0; i < Xsize; i++) {
     m_X[i*3 + 0] = h_Xx[i];
     m_X[i*3 + 1] = h_Xy[i];
     m_X[i*3 + 2] = h_Xz[i];
   }
+
   flann::Matrix<float> mat_X(m_X.get(), Xsize, 3); // Xsize rows and 3 columns
   flann::Index< flann::L2<float> > index( mat_X, flann::KDTreeIndexParams() );
-  index.buildIndex();   
+  index.buildIndex();
 
   boost::shared_array<float> m_Y ( new float [Ysize*3] );
   float* h_Xcorrx = h_Xcorr.get() + Ysize*0;
@@ -257,29 +224,23 @@ void icp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target,
 	     h_Ycentered.get(), &Ysize,  // op(B), ldb
 	     &zero, h_S, &three);  // beta, C, ldc
     }
-    
-  
-
-
-
 
     // find RT from S
-
     findRTfromS(h_Xc, h_Yc, h_S, h_R, h_t);
 
 
 #ifndef NOVIEWER
-    if(!param.noviewer){
-      Eigen::Matrix4f transformation;
-      transformation <<
-      			h_R[0], h_R[1], h_R[2], h_t[0],
+	if (!param.noviewer) {
+		Eigen::Matrix4f transformation;
+		transformation <<
+			h_R[0], h_R[1], h_R[2], h_t[0],
 			h_R[3], h_R[4], h_R[5], h_t[1],
 			h_R[6], h_R[7], h_R[8], h_t[2],
 			0, 0, 0, 1;
-      pcl::transformPointCloud ( *param.cloud_source, *param.cloud_source_trans, transformation );
-      param.viewer->updatePointCloud ( param.cloud_source_trans, *param.source_trans_color, "source trans" );
-      param.viewer->spinOnce();
-    }
+			pcl::transformPointCloud ( *param.cloud_source, *param.cloud_source_trans, transformation );
+			param.viewer->updatePointCloud ( param.cloud_source_trans, *param.source_trans_color, "source trans" );
+			param.viewer->spinOnce();
+	}
 #endif
 
 

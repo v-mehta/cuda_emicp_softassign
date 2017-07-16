@@ -43,7 +43,7 @@ extern "C" {
 }
 
 // uncomment if you do not use the viewer.
-//#define NOVIEWER
+#define NOVIEWER
 
 #include "3dregistration.h"
 
