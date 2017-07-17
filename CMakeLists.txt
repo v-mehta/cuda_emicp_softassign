@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_VERBOSE_MAKEFILE 1) # to see all make process
 
-project(cuda_emicp_softassign)
+project(emicp)
 
 # Force gcc and g++ to use version 5.4 because nvcc cannot handle any versions higher than 5.4.
 set(CMAKE_C_COMPILER "/usr/bin/gcc-5")
