@@ -31,12 +31,7 @@
 
 #include "3dregistration.h"
 
-#define BLOCK_SIZE 1024
-
-// TODO: Remove this workaraound properly.
-// Workaround to fix CUDA 4.0 -> CUDA 5.0+ removals of CUDA_SAFE_CALL and CUT_SAFE_CALL
-#define CUDA_SAFE_CALL(a) a
-#define CUT_SAFE_CALL(a) a
+#define BLOCK_SIZE 128
 
 __global__ static void
 updateA(int rowsA, int colsA, int pitchA,
@@ -87,13 +82,6 @@ updateA(int rowsA, int colsA, int pitchA,
 		#define R(i) RShare[i]
 		#define t(i) tShare[i]
 
-		// #define Euclid(a,b,c) ((a)*(a)+(b)*(b)+(c)*(c))
-		//     float tmp =
-		//       Euclid(Xx - (R(0)*Yx + R(1)*Yy + R(2)*Yz + t(0)),
-		//              Xy - (R(3)*Yx + R(4)*Yy + R(5)*Yz + t(1)),
-		//              Xz - (R(6)*Yx + R(7)*Yy + R(8)*Yz + t(2)) );
-		//     tmp = expf(-tmp/sigma_p^2)
-
 		float tmpX = Xx - (R(0)*Yx + R(1)*Yy + R(2)*Yz + t(0));
 		float tmpY = Xy - (R(3)*Yx + R(4)*Yy + R(5)*Yz + t(1));
 		float tmpZ = Xz - (R(6)*Yx + R(7)*Yy + R(8)*Yz + t(2));
@@ -109,8 +97,6 @@ updateA(int rowsA, int colsA, int pitchA,
 
 		tmpX /= sigma_p2;
 		tmpX = expf(-tmpX);
-
-		//float *A = (float*)((char*)d_A + c * pitchMinBytes) + r;
 
 		d_A[c * pitchA + r] = tmpX;
 	}
@@ -184,7 +170,6 @@ centeringXandY(int rowsA,
 		else
 			Yc[threadIdx.x - 3] = d_Yc[threadIdx.x - 3];
 
-
 	if (r < rowsA) { // check for only inside the vectors
 		__syncthreads();
 		d_XxCenterd[r] = d_Xx[r] - Xc[0];
@@ -217,12 +202,12 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 
 	// example: memCUDA(Xx, Xsize);   // declare d_Xx. no copy.
 	#define memCUDA(var,num) \
-	float* d_ ## var; CUDA_SAFE_CALL(cudaMalloc((void**) &(d_ ## var), sizeof(float)*num));
+	float* d_ ## var; cudaMalloc((void**) &(d_ ## var), sizeof(float)*num);
 
 	// example:   memHostToCUDA(Xx, Xsize);   // declera d_Xx, then copy h_Xx to d_Xx.
 	#define memHostToCUDA(var,num) \
-	float* d_ ## var; CUDA_SAFE_CALL(cudaMalloc((void**) &(d_ ## var), sizeof(float)*num)); \
-	CUDA_SAFE_CALL(cudaMemcpy(d_ ## var, h_ ## var, sizeof(float)*num, cudaMemcpyHostToDevice));
+	float* d_ ## var; cudaMalloc((void**) &(d_ ## var), sizeof(float)*num); \
+	cudaMemcpy(d_ ## var, h_ ## var, sizeof(float)*num, cudaMemcpyHostToDevice);
 
 	// Allocate memory on CUDA device.
 	memHostToCUDA(X, Xsize*3);
@@ -258,8 +243,8 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	// R, t
 	memHostToCUDA(R, 3*3);
 	memHostToCUDA(t, 3);
-	CUDA_SAFE_CALL(cudaMemcpy(d_R, h_R, sizeof(float)*3*3, cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaMemcpy(d_t, h_t, sizeof(float)*3,   cudaMemcpyHostToDevice));
+	cudaMemcpy(d_R, h_R, sizeof(float)*3*3, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_t, h_t, sizeof(float)*3,   cudaMemcpyHostToDevice);
 
 	// S for finding R, t
 	float h_S[9];
@@ -310,28 +295,28 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	// Timer related stuff.
 #define START_TIMER(timer) \
 	if (!param.notimer) { \
-		CUDA_SAFE_CALL( cudaThreadSynchronize());\
-		CUT_SAFE_CALL(sdkStartTimer(&timer)); \
+		cudaThreadSynchronize();\
+		sdkStartTimer(&timer); \
 	}
 
 #define STOP_TIMER(timer) \
 	if (!param.notimer) { \
-		CUDA_SAFE_CALL( cudaThreadSynchronize() );\
-		CUT_SAFE_CALL(sdkStopTimer(&timer)); \
+		cudaThreadSynchronize();\
+		sdkStopTimer(&timer); \
 	}
 
 	// Timers
 	StopWatchInterface *timerTotal, *timerUpdateA, *timerAfterSVD, *timerRT;
 
 	if (!param.notimer) {
-		CUT_SAFE_CALL(sdkCreateTimer(&timerUpdateA));
-		CUT_SAFE_CALL(sdkCreateTimer(&timerAfterSVD));
-		CUT_SAFE_CALL(sdkCreateTimer(&timerRT));
+		sdkCreateTimer(&timerUpdateA);
+		sdkCreateTimer(&timerAfterSVD);
+		sdkCreateTimer(&timerRT);
 	}
 
-	CUT_SAFE_CALL(sdkCreateTimer(&timerTotal));
-	CUDA_SAFE_CALL( cudaThreadSynchronize() );
-	CUT_SAFE_CALL(sdkStartTimer(&timerTotal));
+	sdkCreateTimer(&timerTotal);
+	cudaThreadSynchronize();
+	sdkStartTimer(&timerTotal);
 
 	// Initialize CUBLAS.
 	cublasInit();
@@ -372,7 +357,6 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		// exp(-d_0^2/sigma_p2) * d_one + d_C => d_C
 		cublasSaxpy(rowsA, expf(-d_02/sigma_p2), d_one, 1, d_C, 1);
 
-		// Call CUDA kernel to normalize rows of A.
 		normalizeRowsOfA <<<dimGridForA, dimBlockForA>>> (rowsA, colsA, pitchA, d_A, d_C);
 
 		// update R,T
@@ -442,13 +426,11 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		cublasSscal (3, 1/sumLambda, d_Xc, 1);
 		cublasSscal (3, 1/sumLambda, d_Yc, 1);
 
-		CUDA_SAFE_CALL(cudaMemcpy(h_Xc, d_Xc, sizeof(float)*3, cudaMemcpyDeviceToHost));
-		CUDA_SAFE_CALL(cudaMemcpy(h_Yc, d_Yc, sizeof(float)*3, cudaMemcpyDeviceToHost));
+		cudaMemcpy(h_Xc, d_Xc, sizeof(float)*3, cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_Yc, d_Yc, sizeof(float)*3, cudaMemcpyDeviceToHost);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
-
 		// centering X and Y
-
 		// d_Xprime .- d_Xc => d_XprimeCenterd
 		// d_Y      .- d_Yc => d_YCenterd
 		centeringXandY <<<blocksPerGridForYsize, threadsPerBlockForYsize>>>
@@ -471,7 +453,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 			1.0f, d_XprimeCenterd, rowsA,
 			d_YCenterd, rowsA,
 			0.0f, d_S, 3);
-		CUDA_SAFE_CALL(cudaMemcpy(h_S, d_S, sizeof(float)*9, cudaMemcpyDeviceToHost));
+		cudaMemcpy(h_S, d_S, sizeof(float)*9, cudaMemcpyDeviceToHost);
 
 		///////////////////////////////////////////////////////////////////////////////////// 
 		// find RT from S
@@ -482,15 +464,15 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		///////////////////////////////////////////////////////////////////////////////////// 
 		// copy R,t to device
 		START_TIMER(timerRT);
-		CUDA_SAFE_CALL(cudaMemcpy(d_R, h_R, sizeof(float)*3*3, cudaMemcpyHostToDevice));
-		CUDA_SAFE_CALL(cudaMemcpy(d_t, h_t, sizeof(float)*3,   cudaMemcpyHostToDevice));
+		cudaMemcpy(d_R, h_R, sizeof(float)*3*3, cudaMemcpyHostToDevice);
+		cudaMemcpy(d_t, h_t, sizeof(float)*3,   cudaMemcpyHostToDevice);
 		STOP_TIMER(timerRT);
 
 		sigma_p2 *= sigma_factor;
 	}
 
-	CUDA_SAFE_CALL(cudaThreadSynchronize());
-	CUT_SAFE_CALL(sdkStopTimer(&timerTotal));
+	cudaThreadSynchronize();
+	sdkStopTimer(&timerTotal);
 
 	fprintf(stderr, "computing time: %.10f [s]\n", sdkGetTimerValue(&timerTotal) / 1000.0f);
 
@@ -500,34 +482,34 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 		fprintf(stderr, "Average %.10f [s] for %s\n", sdkGetAverageTimerValue(&timerAfterSVD) / 1000.0f, "afterSVD");
 		fprintf(stderr, "Average %.10f [s] for %s\n", sdkGetAverageTimerValue(&timerRT) / 1000.0f, "RT");
 
-		CUT_SAFE_CALL(sdkDeleteTimer(&timerTotal));
-		CUT_SAFE_CALL(sdkDeleteTimer(&timerUpdateA));
-		CUT_SAFE_CALL(sdkDeleteTimer(&timerAfterSVD));
-		CUT_SAFE_CALL(sdkDeleteTimer(&timerRT));
+		sdkDeleteTimer(&timerTotal);
+		sdkDeleteTimer(&timerUpdateA);
+		sdkDeleteTimer(&timerAfterSVD);
+		sdkDeleteTimer(&timerRT);
 	}
 
 	// Shutdown CUBLAS API.
 	cublasShutdown();
 
 	// Do CUDA memory cleaning.
-	CUDA_SAFE_CALL(cudaFree(d_X));
-	CUDA_SAFE_CALL(cudaFree(d_Y));
-	CUDA_SAFE_CALL(cudaFree(d_Xprime));
-	CUDA_SAFE_CALL(cudaFree(d_YCenterd));
-	CUDA_SAFE_CALL(cudaFree(d_Xc));
-	CUDA_SAFE_CALL(cudaFree(d_Yc));
+	cudaFree(d_X);
+	cudaFree(d_Y);
+	cudaFree(d_Xprime);
+	cudaFree(d_YCenterd);
+	cudaFree(d_Xc);
+	cudaFree(d_Yc);
 
-	CUDA_SAFE_CALL(cudaFree(d_R));
-	CUDA_SAFE_CALL(cudaFree(d_t));
-	CUDA_SAFE_CALL(cudaFree(d_A));
+	cudaFree(d_R);
+	cudaFree(d_t);
+	cudaFree(d_A);
 
-	CUDA_SAFE_CALL(cudaFree(d_S));
-	CUDA_SAFE_CALL(cudaFree(d_one));
-	CUDA_SAFE_CALL(cudaFree(d_sumOfMRow));
-	CUDA_SAFE_CALL(cudaFree(d_C));
-	CUDA_SAFE_CALL(cudaFree(d_lambda));
+	cudaFree(d_S);
+	cudaFree(d_one);
+	cudaFree(d_sumOfMRow);
+	cudaFree(d_C);
+	cudaFree(d_lambda);
 
-	CUDA_SAFE_CALL( cudaThreadExit() );
+	cudaThreadExit();
 
 	delete [] h_one;
 }
