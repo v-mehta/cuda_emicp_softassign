@@ -1,8 +1,7 @@
 CAUTION
 ====
 
-The following instruciton is too old. Now it takes point cloud files instead of txt files.
-Please see src/main.cpp for more detail.
+The following instrucitons might not be up to date or complete.
 
 
 CUDA-based implementations of Softassign and EM-ICP
@@ -21,8 +20,8 @@ Wed Aug 27 19:11:45 JST 2014
 Requirements
 ---
 
-- CUDA 6.5
-- PCL 1.7
+- CUDA 8.0
+- PCL 1.8
 - FLANN
 - Boost
 - lapack, blas
@@ -32,34 +31,12 @@ Usage
 ---
 
 ```
-cuda_emicp_softassign [options]
+emicp [options]
 ```
 
 This demo application finds R and t such that `min ||X - (R*Y+t) ||` for given 3D point sets X and Y.
 
 At the start, the demo application popups a window where two point sets are shown.
-
-### Example1
-```
-$ ./build/cuda_emicp_softassign -pointFileX=./data/P101.txt -Xsize=101 -pointFileY=./data/Qnew101.txt -Ysize=101 -emicp
-```
-This aligns P101.txt and Qnew101.txt (both of 101 points) by using EM-ICP.
-
-### Example2
-
-```
-$ ./build/cuda_emicp_softassign -ply -pointFileX=./data/bun000.ply -pointFileY=./data/bun045.ply -pointsReductionRate=5 -softassign
-```
-This aligns bun000.ply and bun045.ply by using Softassign. Numbers of points in both point sets are reduced (randomly approximately) 5% of its original numbers.
-
-
-### Other demonstrations
-
-```
-$ make -f Makefile.demo demo
-```
-
-
 
 ### Options
 
@@ -67,52 +44,16 @@ $ make -f Makefile.demo demo
 ```
 -pointFileX=filename
 -pointFileY=filename
-[string] Filename of two 3D point sets. Requred.
+[string] Filename of two 3D point sets. Required.
 ```
 Format of file: in each line, x y z coordinates are stored. That’s all. Number of points are specified with Xsize and Ysize options.
 
 #### Reduction number of points:
 ```
--pointsReductionRate=**
-    [float] Numbers of points in the files are randomlyl reduced to ** % (approximately). default: no reduction.
--pointsReductionRateX=**
-    [float] Numbers of points X in the files are randomlyl reduced to ** % (approximately). default: no reduction.
--pointsReductionRateY=**
-    [float] Numbers of points Y in the files are randomlyl reduced to ** % (approximately). default: no reduction.
-```
-Example: `-pointsReductionRate=10` then the number of points is reduced to about 10%.
-
-Note: if -pointsReductionRate exists, -pointsReductionRate{X,Y} are ignored.
-
-#### Algorithms:
-```
-[-icp | -emicp | -emicpcpu | -softassign]
-```
-Choose one of these. default: -softassign is assumed.
-
-#### Softassign parasmters:
-```
--JMAX=***
-    [int] Number of iterations for the annealing loop (1st loop). At first, the annealing temprature T is set to T_0, then T <- T*TFACOR at the end of each iteration. default: 100
--I0=***
-    [int] Number of iterations with the same temprature (2nd loop). default: 5
--I1=***
-    [int] Number of iterations for Shinkhorn’s row/column normalizations. default: 3
--alpha=***
-    [float] parameter for outliers (see the original Softassign paper). default: 3.0
--T_0=***
-    [float] initial temprature for the annealing process. default: 100.0
--TFACTOR=***
-    [float] factor for reducing temprature. default: 0.95
--moutlier=***
-    [float] values of elements in the extra row/column for outliers (see the original Softassign paper). default: 1/sqrtf(T_0)*expf(-1.0f)
+-leaf_size=**
+    [float] Leaf size to use for downsampling the pointclouds using PCL's voxel grid filter. default: 0.005
 ```
 
-#### ICP parameter:
-````
--maxIteration=***
-    [int] Number of ICP iterations. default: 30
-````
 
 #### EM-ICP parameters:
 ````
@@ -128,12 +69,8 @@ Choose one of these. default: -softassign is assumed.
 
 #### MISC:
 ````
--noviewer
-    No viewer is shown. Just align point sets, and quit.
 -notimer
     No timer is shown.
--nostop
-    No interatction by the viewer is required.
 ````
 
 ####  Save and load R, t:
@@ -152,17 +89,8 @@ r31 r32 r33
 tx ty tz
 ```
 
-#### align scales
-```
--alignScaleOnce
-     two point clouds are aligned in scales at the beginning.
-```
-
-
 Build the demo application
 ---
-
-testd on Ubunts 14.04LTS
 
 ### prepare packages:
 ```
@@ -173,6 +101,7 @@ sudo apt-get install libpcl-1.7-all-dev libflann-dev libboost-all-dev ccache lib
 ```
 mkdir build
 cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_VERBOSE_MAKEFILE=1 ..
+make
 ```
 
 
@@ -183,18 +112,12 @@ How to use the API
 
 ### interfaces:
 ```
-void        icp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_targetX,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sourceY,float* h_R, float* h_t, registrationParameters param)
-void softassign(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_targetX,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sourceY, float* h_R, float* h_t, registrationParameters param)
 void      emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_targetX,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sourceY,float* h_R, float* h_t, registrationParameters param)
-void   emicpcpu(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_targetX,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sourceY,float* h_R, float* h_t, registrationParameters param)
 ```
 
 To use these functions,
-compile your program with either `icp.cpp`, `softassign.cu`, `emicp.cu`, or `emicp_cpu.cpp` along with  `3dregistration.h`.
+compile your program with `emicp.cu`, along with  `3dregistration.h`, `cloud2data.cpp`, and `findRTfromS.cpp`.
 
 ### description
 ```
@@ -218,16 +141,6 @@ registrationParameters param [Input]
 ```
 parameters for alignment. set values by yourself.
 see 3dregistration.h and usage of demo (described above).
-
-### with/without demo viewer
-If you do not use the viewer, define
-```
-#define NOVIEWER
-```
-when compling icp.cpp, softassign.cu, emicp.cu, or emicp_cpu.cpp.
-
-
-
 
 
 License: MIT
