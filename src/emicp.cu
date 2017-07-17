@@ -31,8 +31,7 @@
 
 #include "3dregistration.h"
 
-// threads in a 2D block is BLOCK_SIZE*BLOCK_SIZE
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 1024
 
 // TODO: Remove this workaraound properly.
 // Workaround to fix CUDA 4.0 -> CUDA 5.0+ removals of CUDA_SAFE_CALL and CUT_SAFE_CALL
@@ -172,7 +171,6 @@ centeringXandY(int rowsA,
 	float* d_XxCenterd, float* d_XyCenterd, float* d_XzCenterd,
 	float* d_YxCenterd, float* d_YyCenterd, float* d_YzCenterd
 ) {
-
 	// do for both X and Y at the same time
 	int r =  blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -306,7 +304,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	dim3 dimGridForA( (pitchA + dimBlockForA.x - 1) / dimBlockForA.x, (colsA  + dimBlockForA.y - 1) / dimBlockForA.y);
 
 	// for 1D block
-	int threadsPerBlockForYsize = 512; // a block is 512 threads
+	int threadsPerBlockForYsize = 1024; // a block is 512 threads
 	int blocksPerGridForYsize = (Ysize + threadsPerBlockForYsize - 1 ) / threadsPerBlockForYsize;
 
 	// Timer related stuff.

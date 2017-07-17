@@ -53,67 +53,11 @@ void loadFile(const char* fileName, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
 }
 
 /// Downsample point cloud using voxel grid.
-void pointsReduction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float leaf_size) {
+void filterCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float leaf_size) {
 	pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
 	voxel_filter.setInputCloud(cloud);
 	voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
 	voxel_filter.filter(*cloud);
-}
-
-/// Scale the point cloud.
-void alignScaleOnce1(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-	Eigen::Vector4f center1, center2;
-	Eigen::Matrix3f covariance1, covariance2;
-	pcl::computeMeanAndCovarianceMatrix (*cloud1, covariance1, center1);
-	pcl::computeMeanAndCovarianceMatrix (*cloud2, covariance2, center2);
-
-	// symmetric scale estimation by Horn 1968
-	float s = sqrt( covariance1.trace() / covariance2.trace());
-
-	Eigen::Affine3f scale;
-	scale.matrix() <<
-		s, 0, 0, 0,
-		0, s, 0, 0,
-		0, 0, s, 0,
-		0, 0, 0, 1;
-
-	pcl::transformPointCloud (*cloud2, *cloud2, scale);
-}
-
-void alignScaleOnce(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2) {
-	Eigen::Vector4f center1, center2;
-	Eigen::Matrix3f covariance1, covariance2;
-	pcl::computeMeanAndCovarianceMatrix (*cloud1, covariance1, center1);
-	pcl::computeMeanAndCovarianceMatrix (*cloud2, covariance2, center2);
-
-	std::cout << "scale1 = " << covariance1.trace() << std::endl;
-	std::cout << "scale2 = " << covariance2.trace() << std::endl;
-
-	Eigen::Affine3f Scale;
-	float s;
-	s = 1.0 / sqrt( covariance1.trace() );
-	s *= sqrt(0.003); // ad-hoc for numerical issue
-	Scale.matrix() <<
-		s, 0, 0, 0,
-	0, s, 0, 0,
-	0, 0, s, 0,
-	0, 0, 0, 1;
-	pcl::transformPointCloud ( *cloud1, *cloud1, Scale );
-
-	s = 1.0 / sqrt( covariance2.trace() );
-	s *= sqrt(0.003); // ad-hoc for numerical issue
-	Scale.matrix() <<
-		s, 0, 0, 0,
-	0, s, 0, 0,
-	0, 0, s, 0,
-	0, 0, 0, 1;
-
-	pcl::transformPointCloud ( *cloud2, *cloud2, Scale );
-	pcl::computeMeanAndCovarianceMatrix (*cloud1, covariance1, center1);
-	pcl::computeMeanAndCovarianceMatrix (*cloud2, covariance2, center2);
-
-	std::cout << "scale1 = " << covariance1.trace() << std::endl;
-	std::cout << "scale2 = " << covariance2.trace() << std::endl;
 }
 
 void init_RT(float *h_R, float *h_t) {
@@ -190,9 +134,6 @@ int main(int argc, char** argv) {
 		cerr << "min ||X - (R*Y+t) || " << endl;
 		exit(1);
 	}
-
-	int Xsize, Ysize;
-
 	// initialize parameters
 	registrationParameters param;
 
@@ -213,13 +154,6 @@ int main(int argc, char** argv) {
 	param.argc     = argc;
 	param.argv     = argv;
 
-	// read points, and initialize
-	float *h_X, *h_Y;
-
-	// h_X stores points as the order of
-	// [X_x1 X_x2 .... X_x(Xsize-1) X_y1 X_y2 .... X_y(Xsize-1)  X_z1 X_z2 .... X_z(Xsize-1) ],
-	// where (X_xi X_yi X_zi) is the i-th point in X.
-	// h_Y does the same for Y.
 	param.cloud_source.reset(new pcl::PointCloud<pcl::PointXYZ>());
 	param.cloud_target.reset(new pcl::PointCloud<pcl::PointXYZ>());
 
@@ -227,31 +161,13 @@ int main(int argc, char** argv) {
 	loadFile(pointFileX, param.cloud_target);
 	loadFile(pointFileY, param.cloud_source);
 
-	if (checkCmdLineFlag(argc, (const char **) argv, "alignScaleOnce"))
-		alignScaleOnce(param.cloud_target, param.cloud_source);
-
 	// Downsample scene point cloud.
-	float pointsReductionRate = 0.005;
-	if ( (pointsReductionRate = getCmdLineArgumentFloat(argc, (const char **) argv, "pointsReductionRate") ) ) {
-		pointsReduction(param.cloud_target, pointsReductionRate);
-		pointsReduction(param.cloud_source, pointsReductionRate);
-		cout << "number of points X,Y are reduced to "
-			<< pointsReductionRate << "% of original." << endl;
-	} else {
-		if ( (pointsReductionRate = getCmdLineArgumentFloat(argc, (const char **) argv, "pointsReductionRateX") ) ) {
-			pointsReduction(param.cloud_target, pointsReductionRate);
-			cout << "number of points X are reduced to "
-				<< pointsReductionRate << "% of original." << endl;
-		}
-		if ( (pointsReductionRate = getCmdLineArgumentFloat(argc, (const char **) argv, "pointsReductionRateY") ) ) {
-			pointsReduction(param.cloud_source, pointsReductionRate);
-			cout << "number of points Y are reduced to "
-				<< pointsReductionRate << "% of original." << endl;
-		}
-	}
+	float leaf_size = 0.005;
+	filterCloud(param.cloud_target, leaf_size);
+	filterCloud(param.cloud_source, leaf_size);
 
-	cout << "Xsize: " << param.cloud_target->size() << endl
-		<< "Ysize: " << param.cloud_source->size() << endl;
+	cout << "Number of points in target cloud: " << param.cloud_target->size() << endl
+		<< "Number of points in source cloud: " << param.cloud_source->size() << endl;
 
 	float* h_R = new float [9]; // rotation matrix
 	float* h_t = new float [3]; // translation vector
@@ -283,8 +199,6 @@ int main(int argc, char** argv) {
 		saveRTtoFile(h_R, h_t, saveRTtoFilename);
 
 	// Clean up.
-	delete [] h_X;
-	delete [] h_Y;
 	delete [] h_R;
 	delete [] h_t;
 

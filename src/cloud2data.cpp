@@ -24,6 +24,10 @@
 */
 #include "3dregistration.h"
 
+// h_X stores points as the order of
+// [X_x1 X_x2 .... X_x(Xsize-1) X_y1 X_y2 .... X_y(Xsize-1)  X_z1 X_z2 .... X_z(Xsize-1) ],
+// where (X_xi X_yi X_zi) is the i-th point in X.
+// h_Y does the same for Y.
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float **X, int &Xsize) {
 	Xsize = cloud->size();
 
