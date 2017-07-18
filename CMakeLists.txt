@@ -15,7 +15,8 @@ include_directories ( ${PCL_INCLUDE_DIRS} )
 link_directories ( ${PCL_LIBRARY_DIRS} )
 add_definitions ( ${PCL_DEFINITIONS} )
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/" ${CMAKE_MODULE_PATH})
+
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/" ${CMAKE_MODULE_PATH})
 include(FindFlann)
 
 # OpenMP
