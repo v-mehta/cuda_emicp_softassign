@@ -37,7 +37,7 @@
 #include <pcl/filters/filter_indices.h>
 #include <pcl/filters/voxel_grid.h>
 
-#include "3dregistration.h"
+#include "emicp.h"
 
 using namespace std;
 

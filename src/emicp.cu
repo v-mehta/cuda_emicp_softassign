@@ -29,9 +29,9 @@
 #include <helper_cuda.h>
 #include <helper_timer.h>
 
-#include "3dregistration.h"
+#include "emicp.h"
 
-#define BLOCK_SIZE 128
+#define BLOCK_SIZE 32
 
 __global__ static void
 updateA(int rowsA, int colsA, int pitchA,

@@ -31,7 +31,7 @@ find_package(Boost 1.54 REQUIRED)
 
 # CUDA
 find_package(CUDA 8.0 REQUIRED)
-include_directories ( ${CUDA_TOOLKIT_ROOT_DIR}/samples/common/inc/ )
+include_directories (include/${PROJECT_NAME} ${CUDA_TOOLKIT_ROOT_DIR}/samples/common/inc/)
 
 message("CUDA_VERSION: " ${CUDA_VERSION} )
 message("CUDA_CUDA_LIBRARY: " ${CUDA_CUDA_LIBRARY} )
@@ -46,7 +46,15 @@ find_library(ATLAS atlas)
 include(FindLAPACK)
 add_definitions ( ${LAPACK_LINKER_FLAGS} )
 
-cuda_add_executable ( ${PROJECT_NAME} src/3dregistration.h src/main.cpp src/findRTfromS.cpp src/cloud2data.cpp src/emicp.cu)
-target_link_libraries ( ${PROJECT_NAME} ${PCL_LIBRARIES} ${LAPACK_LIBRARIES} -llapack)
+cuda_add_library (
+	${PROJECT_NAME}
+	src/findRTfromS.cpp
+	src/cloud2data.cpp
+	src/emicp.cu
+)
+CUDA_ADD_CUBLAS_TO_TARGET (${PROJECT_NAME})
 
-CUDA_ADD_CUBLAS_TO_TARGET ( ${PROJECT_NAME} )
+cuda_add_executable   (example src/main.cpp)
+target_link_libraries (example ${PROJECT_NAME} ${PCL_LIBRARIES} ${LAPACK_LIBRARIES} -llapack)
+CUDA_ADD_CUBLAS_TO_TARGET (example)
+
