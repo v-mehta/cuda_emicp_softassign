@@ -37,8 +37,6 @@ typedef struct {
 	// misc
 	int notimer;  // No timer is shown.
 
-	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source;
-	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target;
 } registrationParameters;
 
 void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
