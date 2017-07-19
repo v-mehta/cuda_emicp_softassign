@@ -198,7 +198,7 @@ void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::Po
 	float d_02         = param.d_02;
 
 	// Initialize CUDA device.
-	findCudaDevice(param.argc, (const char**)param.argv);
+	cudaSetDevice(0);
 
 	// example: memCUDA(Xx, Xsize);   // declare d_Xx. no copy.
 	#define memCUDA(var,num) \

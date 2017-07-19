@@ -36,18 +36,15 @@ typedef struct {
 
 	// misc
 	int notimer;  // No timer is shown.
-	int argc;
-	char **argv;
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target;
+	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source;
+	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target;
 } registrationParameters;
 
 void emicp(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source, float* h_R, float* h_t, const registrationParameters &param);
 
 // Find the transformation matrix from the scene.
 void findRTfromS(const float* h_Xc, const float* h_Yc, const float* h_S, float* h_R, float* h_t);
-void printRT(const float* R, const float* t);
 
 void cloud2data(const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, float **X, int &Xsize);
 

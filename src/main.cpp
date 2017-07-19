@@ -151,23 +151,21 @@ int main(int argc, char** argv) {
 
 	// Set the remaining parameters.
 	param.notimer  = checkCmdLineFlag(argc, (const char **) argv, "notimer");
-	param.argc     = argc;
-	param.argv     = argv;
 
-	param.cloud_source.reset(new pcl::PointCloud<pcl::PointXYZ>());
-	param.cloud_target.reset(new pcl::PointCloud<pcl::PointXYZ>());
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source = boost::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target = boost::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
 
 	// Load the pointclouds from specified files.
-	loadFile(pointFileX, param.cloud_target);
-	loadFile(pointFileY, param.cloud_source);
+	loadFile(pointFileX, cloud_target);
+	loadFile(pointFileY, cloud_source);
 
 	// Downsample scene point cloud.
 	float leaf_size = 0.005;
-	filterCloud(param.cloud_target, leaf_size);
-	filterCloud(param.cloud_source, leaf_size);
+	filterCloud(cloud_target, leaf_size);
+	filterCloud(cloud_source, leaf_size);
 
-	cout << "Number of points in target cloud: " << param.cloud_target->size() << endl
-		<< "Number of points in source cloud: " << param.cloud_source->size() << endl;
+	cout << "Number of points in target cloud: " << cloud_target->size() << endl
+		<< "Number of points in source cloud: " << cloud_source->size() << endl;
 
 	float* h_R = new float [9]; // rotation matrix
 	float* h_t = new float [3]; // translation vector
@@ -187,7 +185,7 @@ int main(int argc, char** argv) {
 	start = clock();
 
 	// Call the function that executes the algorithm.
-	emicp(param.cloud_target, param.cloud_source, h_R, h_t, param);
+	emicp(cloud_target, cloud_source, h_R, h_t, param);
 
 	end = clock();
 	printf("elapsed time: %f\n", (double)(end - start) / CLOCKS_PER_SEC);
