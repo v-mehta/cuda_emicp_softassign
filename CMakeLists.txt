@@ -1,26 +1,32 @@
-cmake_minimum_required(VERSION 3.8)
-set(CMAKE_VERBOSE_MAKEFILE 1) # to see all make process
+cmake_minimum_required(VERSION 3.5)
 
 project(emicp)
+add_definitions(-std=c++11)
+set(CMAKE_BUILD_TYPE Release)
 
-# Force gcc and g++ to use version 5.4 because nvcc cannot handle any versions higher than 5.4.
-set(CMAKE_C_COMPILER "/usr/bin/gcc-5")
+# PCL and VTK fixes
+find_package(PCL REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
 
-SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache) 
+find_package(VTK REQUIRED)
 
-# PCL
-find_package(PCL 1.8 REQUIRED)
-include_directories ( ${PCL_INCLUDE_DIRS} )
-link_directories ( ${PCL_LIBRARY_DIRS} )
-add_definitions ( ${PCL_DEFINITIONS} )
+get_directory_property(dir_defs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS)
+set(vtk_flags)
+foreach(it ${dir_defs})
+  if(it MATCHES "vtk*")
+  list(APPEND vtk_flags ${it})
+  endif()
+endforeach()
 
+foreach(d ${vtk_flags})
+  remove_definitions(-D${d})
+endforeach()
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/" ${CMAKE_MODULE_PATH})
 include(FindFlann)
 
 # OpenMP
-FIND_PACKAGE(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED)
 if (OPENMP_FOUND)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} -fPIC")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} -fPIC")
@@ -30,32 +36,56 @@ endif()
 # Boost
 find_package(Boost 1.54 REQUIRED)
 
-# CUDA
-find_package(CUDA 8.0 REQUIRED)
-include_directories (include/${PROJECT_NAME} ${CUDA_TOOLKIT_ROOT_DIR}/samples/common/inc/)
-
-message("CUDA_VERSION: " ${CUDA_VERSION} )
-message("CUDA_CUDA_LIBRARY: " ${CUDA_CUDA_LIBRARY} )
-message("CUDA_CUDART_LIBRARY: " ${CUDA_CUDART_LIBRARY} )
-message("CUDA_NVCC_FLAGS: " ${CUDA_NVCC_FLAGS} "-Wno-deprecated-gpu-targets -fPIC")
-message("CUDA_INCLUDE_DIRS: " ${CUDA_INCLUDE_DIRS} )
-message("CUDA_CUBLAS_LIBRARIES: " ${CUDA_CUBLAS_LIBRARIES} )
-message("CUDA_TOOLKIT_ROOT_DIR: " ${CUDA_TOOLKIT_ROOT_DIR} )
-
+# Atlas
 find_library(ATLAS atlas)
 
+# Lapack
 include(FindLAPACK)
 add_definitions ( ${LAPACK_LINKER_FLAGS} )
 
-cuda_add_library (
-	${PROJECT_NAME}
+# CUDA
+find_package(CUDA REQUIRED)
+
+include_directories(
+  include/emicp
+  ${CUDA_TOOLKIT_ROOT_DIR}/samples/common/inc/
+  ${CUDA_INCLUDE_DIRS}
+)
+
+set(CUDA_ARCH "-arch=sm_35" CACHE STRING "Value of the NVCC -arch option.")
+set(CUDA_NVCC_FLAGS "-arch=sm_35" CACHE STRING "nvcc flags" FORCE)
+set(CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
+message("CUDA_TOOLKIT_ROOT_DIR: " ${CUDA_TOOLKIT_ROOT_DIR} )
+
+set(CUDASRCS src/emicp.cu)
+CUDA_COMPILE(cuda_objs ${CUDASRCS})
+
+cuda_add_library(${PROJECT_NAME}
 	src/findRTfromS.cpp
 	src/cloud2data.cpp
-	src/emicp.cu
+  src/emicp.cu
+  ${cuda_objs}
 )
-CUDA_ADD_CUBLAS_TO_TARGET (${PROJECT_NAME})
 
-cuda_add_executable   (example src/main.cpp)
-target_link_libraries (example ${PROJECT_NAME} ${PCL_LIBRARIES} ${LAPACK_LIBRARIES} -llapack)
-CUDA_ADD_CUBLAS_TO_TARGET (example)
+target_link_libraries(${PROJECT_NAME} ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
 
+cuda_add_executable(example src/main.cpp src/emicp.cu)
+target_link_libraries(example
+  ${PROJECT_NAME}
+  ${CUDA_LIBRARIES}
+  ${CUDA_nppi_LIBRARY}
+  ${PCL_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${CUDA_CUBLAS_LIBRARIES}
+)
+
+add_executable(test_icp
+  src/test_icp.cpp
+)
+
+target_link_libraries(test_icp
+  ${PCL_LIBRARIES}
+  ${VTK_LIBRARIES}
+)
+
+set_target_properties(test_icp PROPERTIES COMPILE_OPTIONS "-std=c++11")
